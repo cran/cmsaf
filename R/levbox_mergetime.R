@@ -131,7 +131,7 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
 
 # get time reference
 
-  dt_ref <- as.POSIXct(utcal.nc(t_units,0,type="s"),tz="UTC")
+  dt_ref <- get_time(t_units,0)
   unit_ref <- unlist(strsplit(t_units,split=" "))[1]
 
   # check reference time unit
@@ -227,7 +227,7 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
       time_len <- time_len+length(dum_time)
 
       dum_t_units <- ncatt_get(id,t_name,"units")$value
-      dt_dum <- as.POSIXct(utcal.nc(dum_t_units,dum_time,type="s"),tz="UTC")
+      dt_dum <- get_time(dum_t_units,dum_time)
       if (unit_ref=="months"){
         dum_time <- round((difftime(dt_dum,dt_ref,units=c("days")))/30)
         dum_time <- as.numeric(dum_time)

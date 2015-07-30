@@ -5,7 +5,6 @@ function(var,start,end,infile,outfile){
 
 # loading libraries
 
-  #library(RNetCDF)
   #library(ncdf4)
 
 # check filename
@@ -112,7 +111,7 @@ function(var,start,end,infile,outfile){
 
 # extract time information
 
-  date.time <- as.Date(utcal.nc(t_units,time1,type="s"),tz="UTC")
+  date.time <- as.Date(get_time(t_units,time1))
   period <- which(date.time>=start&date.time<=end)
 
  if (length(period)>=1){

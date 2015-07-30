@@ -52,7 +52,7 @@ if (info=="s"){
 	      }
 	    }
 	    time1 <- ncvar_get(id,"time")
-	    date.time <- as.Date(utcal.nc(t_units,time1,type="s"),tz="UTC")
+	    date.time <- as.Date(get_time(t_units,time1))
 	    cat("time with length ",length(time1)," (range ",as.character(min(date.time))," to ",as.character(max(date.time)),")",sep="", "\n")
 	} else {
 	    cat(dimnames[i]," with length ",id$dim[[i]]$len," (range ",min(id$dim[[i]]$vals)," to ",max(id$dim[[i]]$vals),")",sep="", "\n")

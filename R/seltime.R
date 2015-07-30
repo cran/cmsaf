@@ -5,7 +5,6 @@ function(var,hour_min=c("00:00:00"),infile,outfile){
 
 # loading libraries
 
-  #library(RNetCDF)
   #library(ncdf4)
 
 # check filename
@@ -112,7 +111,7 @@ function(var,hour_min=c("00:00:00"),infile,outfile){
 
 # extract time information
 
-  date.time <- as.POSIXct(utcal.nc(t_units,time1,type="s"),tz="UTC")
+  date.time <- get_time(t_units,time1)
   a <- as.character(date.time)
   b <- strsplit(a," ")
   d <- unlist(b)

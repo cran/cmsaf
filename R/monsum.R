@@ -5,7 +5,6 @@ function(var,infile,outfile){
 
 # loading libraries
 
-  #library(RNetCDF)
   #library(ncdf4)
 
 # check filename
@@ -113,7 +112,7 @@ function(var,infile,outfile){
 
 # extract time information
 
-  date.time <- as.Date(utcal.nc(t_units,time1,type="s"),tz="UTC")
+  date.time <- as.Date(get_time(t_units,time1))
   a <- as.character(date.time)
   b <- strsplit(a,"-")
   d <- unlist(b)

@@ -11,8 +11,8 @@ The operation and functions are inspired by the Climate Data Operatores (cdo).
 \tabular{ll}{
 Package: \tab cmsaf\cr
 Type: \tab Package\cr
-Version: \tab 1.4\cr
-Date: \tab 2015-06-24\cr
+Version: \tab 1.5\cr
+Date: \tab 2015-07-29\cr
 License: \tab GPL (>= 3)\cr
 }
 The cmsaf-functions are manipulating netcdf input files and write the result 
@@ -25,7 +25,8 @@ the netcdf data the 'ncdf4' package is used.
 }
 \author{Steffen Kothe <Steffen.Kothe@dwd.de>
 
-Maintainer: Steffen Kothe <contact.cmsaf@dwd.de>
+Maintainer: Steffen Kothe <Steffen.Kothe@dwd.de>
+Contact: CM SAF Team <contact.cmsaf@dwd.de>
 }
 \references{www.cmsaf.eu
 
