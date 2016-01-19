@@ -3,10 +3,6 @@ function(var,infile,outfile){
 
   start.time <- Sys.time()
 
-# loading library
-
-  #library(ncdf4)
-
 # check filename
 
   filecheck <- checkfile(infile,outfile)

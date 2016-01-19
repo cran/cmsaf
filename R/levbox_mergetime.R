@@ -3,10 +3,6 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
 
   start.time <- Sys.time()
 
-# loading library
-
-  #library(ncdf4)
-
 # define standard names of variables and dimensions
 
    t_name <- "time"
@@ -102,6 +98,13 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
 
 	lon <- lon[lon_limit]
 	lat <- lat[lat_limit]
+  
+	# check for empty lon_limit or lat_limit
+	
+	if (length(lon_limit)==0|length(lat_limit)==0){
+	  nc_close(id)
+	  stop("Selected region is outside target area!")
+	}
 
 	startx <- min(lon_limit)
 	starty <- min(lat_limit)
@@ -228,15 +231,19 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
 
       dum_t_units <- ncatt_get(id,t_name,"units")$value
       dt_dum <- get_time(dum_t_units,dum_time)
-      if (unit_ref=="months"){
-        dum_time <- round((difftime(dt_dum,dt_ref,units=c("days")))/30)
-        dum_time <- as.numeric(dum_time)
+      if (as.character(dt_ref)=="-4712-01-01 12:00:00"){
+        dum_time <- (as.numeric(dt_dum)/86400)+2440587.5
       } else {
-        dum_time <- difftime(dt_dum,dt_ref,units=c(unit_ref))
+        if (unit_ref=="months"){
+          dum_time <- round((difftime(dt_dum,dt_ref,units=c("days")))/30.4375)
+          dum_time <- as.numeric(dum_time)
+        } else {
+          dum_time <- difftime(dt_dum,dt_ref,units=c(unit_ref))
+        }
       }
 
       if ("time_bnds" %in% varnames){
-	 dum_tb <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
+	      dum_tb <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
       }
 
       nc_close(id)

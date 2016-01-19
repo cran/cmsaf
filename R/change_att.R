@@ -1,10 +1,6 @@
 change_att <-
 function(var,infile,v_name="No_change",s_name="No_change",l_name="No_change",u_name="No_change",F_val="No_change",m_val="No_change",val_prec="double"){
 
-# loading libraries
-
-  #library(ncdf4)
-
 # define standard names of variables and dimensions
 
    info = "Created with the CM SAF R toolbox." 

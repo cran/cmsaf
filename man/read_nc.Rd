@@ -1,16 +1,14 @@
-\name{muldpm}
-\alias{muldpm}
+\name{read_nc}
+\alias{read_nc}
 \title{
-Multiply by days per month.
+Read netcdf variable.
 }
 \description{
-This function multiplies each timestep of a timeseries by the number 
-of days of the corresponding month. This can be useful to convert
-units, such as monthly millimeters per day (mm/d) to millimeters (mm). 
-Leap-years are included.
+This simple function reads a variable of a netcdf file
+into R.  
 }
 \usage{
-muldpm(var, infile, outfile)
+read_nc(var,infile)
 }
 \arguments{
   \item{var}{
@@ -19,12 +17,10 @@ Name of netcdf variable (character).
   \item{infile}{
 Filename of input netcdf file. This may include the directory (character).
 }
-  \item{outfile}{
-Filename of output netcdf file. This may include the directory (character).
-}
 }
 \value{
-A netcdf file including a timeseries of the lenght of infile is written.
+The output depends on the netcdf variable and is most commonly a 2 or 3
+dimensional array. 
 }
 \author{
 Steffen Kothe
@@ -59,7 +55,6 @@ library(ncdf4)
    ncatt_put(ncnew,"lat","standard_name","latitude",prec="text")
    nc_close(ncnew)
 
-## Multiply each timestep of the example CM SAF netcdf file with the 
-## number of days per month and write the output to a new file.
-   muldpm("SIS","CMSAF_example_file.nc", "CMSAF_example_file_muldpm.nc")
+## Load the data of variable "SIS" of the example file into R.
+   read_nc("SIS","CMSAF_example_file.nc")
 }

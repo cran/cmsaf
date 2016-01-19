@@ -7,10 +7,11 @@ Extract data at a given point.
 This function extracts all data at a given point. A point is given 
 by a pair of longitude and latitude coordinates. The function will find
 the closest grid point to the given coordinates and extracts the data
-for this point.
+for this point. The output-file can be optional in netcdf or csv.
+The outfile is checked for the correct file extension.
 }
 \usage{
-selpoint(var, infile, outfile, lon1, lat1)
+selpoint(var, infile, outfile, lon1, lat1, format)
 }
 \arguments{
   \item{var}{
@@ -28,9 +29,14 @@ Longitude of desired point (numeric).
   \item{lat1}{
 Latitude of desired point (numeric).
 }
+  \item{format}{
+Intended output format. Options are "nc" or "csv". Default is "nc" (character).
+}
 }
 \value{
-A netcdf file including the selected point is written.
+A netcdf or csv file including the selected point is written. The csv-file is
+tested for use in Excel and includes two coloumns (Time and Data), which are
+seperated by ";".
 }
 \author{
 Steffen Kothe
@@ -66,7 +72,7 @@ library(ncdf4)
    nc_close(ncnew)
 
 ## Select a point of the example CM SAF netcdf file and write the output 
-## to a new file.
+## to a csv-file.
    selpoint("SIS","CMSAF_example_file.nc", "CMSAF_example_file_selpoint.nc",
-   8,48)
+   8,48,"csv")
 }

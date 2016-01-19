@@ -1,20 +1,21 @@
-\name{muldpm}
-\alias{muldpm}
+\name{cmsaf.divc}
+\alias{cmsaf.divc}
 \title{
-Multiply by days per month.
+Divide data by a constant.
 }
 \description{
-This function multiplies each timestep of a timeseries by the number 
-of days of the corresponding month. This can be useful to convert
-units, such as monthly millimeters per day (mm/d) to millimeters (mm). 
-Leap-years are included.
+This function divides each element of a dataset by a given 
+constant number.  
 }
 \usage{
-muldpm(var, infile, outfile)
+cmsaf.divc(var, const, infile, outfile)
 }
 \arguments{
   \item{var}{
 Name of netcdf variable (character).
+}
+  \item{const}{
+Constant number (numeric).
 }
   \item{infile}{
 Filename of input netcdf file. This may include the directory (character).
@@ -24,7 +25,8 @@ Filename of output netcdf file. This may include the directory (character).
 }
 }
 \value{
-A netcdf file including a timeseries of the lenght of infile is written.
+A netcdf file including the manipulated data fields of infile is written.
+Standard output precision is 'double'.
 }
 \author{
 Steffen Kothe
@@ -59,7 +61,7 @@ library(ncdf4)
    ncatt_put(ncnew,"lat","standard_name","latitude",prec="text")
    nc_close(ncnew)
 
-## Multiply each timestep of the example CM SAF netcdf file with the 
-## number of days per month and write the output to a new file.
-   muldpm("SIS","CMSAF_example_file.nc", "CMSAF_example_file_muldpm.nc")
+## Divide each dataset element of the example CM SAF netcdf file by 
+## a given number and write the output to a new file.
+   cmsaf.divc("SIS", 100, "CMSAF_example_file.nc", "CMSAF_example_file_cmsaf.divc.nc")
 }

@@ -1,10 +1,6 @@
 ncinfo <-
 function(infile, info="s"){
 
-# loading library
-
-  #library(ncdf4)
-
 # define standard names of variables and dimensions
 
    t_name <- "time"
@@ -33,13 +29,13 @@ if (info=="s"){
     }
     
     # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+    for (i in 1:length(dimnames)){
+	    sn <- ncatt_get(id,dimnames[i],"standard_name")
+	    if (length(sn)>0){
+	      sn <- sn$value
+	    if (sn=="time")(t_name <- dimnames[i])
+	    }
+    }
 
   cat("\n","With following dimensions:",sep="", "\n")
       for (i in 1:length(dimnames)){
@@ -48,7 +44,7 @@ if (info=="s"){
 	      if (t_name %in% dimnames){
 	      attnames <- names(id$dim[[i]])
 	      if ("units" %in% attnames){
-		  t_units <- ncatt_get(id,t_name,"units")$value}
+		      t_units <- ncatt_get(id,t_name,"units")$value}
 	      }
 	    }
 	    time1 <- ncvar_get(id,"time")

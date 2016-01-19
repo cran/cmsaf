@@ -1,12 +1,7 @@
 selpoint <-
-function(var,infile,outfile,lon1=0,lat1=0){
+function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
 
   start.time <- Sys.time()
-
-# loading libraries
-
-  #library(ncdf4)
-  #library(sp)
 
 # check filename
 
@@ -125,9 +120,9 @@ function(var,infile,outfile,lon1=0,lat1=0){
 	  for (j in 1:length(lat2)){
 	    dist <- spDistsN1(pos, c(lon2[i],lat2[j]), longlat = FALSE)
 	      if (dist<=dum_dist){
-		dum_dist <- dist
-		dumi <- i
-		dumj <- j
+		      dum_dist <- dist
+		      dumi <- i
+		      dumj <- j
 	      }
 	    }
 	  }
@@ -150,20 +145,22 @@ function(var,infile,outfile,lon1=0,lat1=0){
     v_missing_value = v__FillValue}
 
   nc_close(id)
+  
+  if (length(time1)==1){
+    dummy <- array(NA,dim=c(1,1,1))
+    dummy[1,1,1] <- data1
+    data1 <- dummy
+  }
+  
+# file output  
 
-  #dum <- max(data1,na.rm=T)
-  #if (is.integer(dum)){var_prec="short"}
+  if (format=="nc"){
 
-# create netcdf
+  # create netcdf
 
-  cat("create netcdf", "\n")
-
-    if (length(time1)==1){
-      dummy <- array(NA,dim=c(1,1,1))
-      dummy[1,1,1] <- data1
-      data1 <- dummy
-    }
-
+  cat("create netcdf", "\n")    
+    dum_fname <- unlist(strsplit(outfile,"."))
+    if (dum_fname[length(dum_fname)]!="nc")(outfile <- paste(outfile,".nc",sep=""))
     data1[is.na(data1)] <- v_missing_value
     nb2 <- c(0,1)
 
@@ -230,6 +227,18 @@ function(var,infile,outfile,lon1=0,lat1=0){
     }
 
     nc_close(ncnew)
+  
+  } # end format="nc"
+
+  if (format=="csv"){
+    cat("create csv-file", "\n")
+    dum_fname <- unlist(strsplit(outfile,"."))
+    if (dum_fname[length(dum_fname)]!="csv")(outfile <- paste(outfile,".csv",sep=""))
+    Data <- data1
+    Time <- get_time(t_units,time1)
+    dataframe <- data.frame(Time,Data)
+    write.table(dataframe,file=outfile,row.names=FALSE,sep=";")    
+  }
 
   } else {cat("WARNING! Coordinates outside of the domain.", "\n")}
 

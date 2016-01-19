@@ -3,10 +3,6 @@ function(var,infile,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
 
   start.time <- Sys.time()
 
-# loading library
-
-  #library(ncdf4)
-
 # check filename
 
   filecheck <- checkfile(infile,outfile)
@@ -73,9 +69,9 @@ function(var,infile,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	t_units <- ncatt_get(id,t_name,"units")$value}
+	      t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
@@ -87,10 +83,10 @@ function(var,infile,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get data of first file and cut desired region 
+  # get data of first file and cut desired region 
 
 	lon <- ncvar_get(id,lon_name)
 	lat <- ncvar_get(id,lat_name)
@@ -123,9 +119,6 @@ function(var,infile,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
     v_missing_value = v__FillValue}
 
   nc_close(id)
-
-  #dum <- max(data1,na.rm=T)
-  #if (is.integer(dum)){var_prec="short"}
 
 # create netcdf
 

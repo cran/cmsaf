@@ -1,5 +1,5 @@
-seltime <-
-function(var,hour_min=c("00:00:00"),infile,outfile){
+cmsaf.addc <-
+function(var,const=0,infile,outfile){
 
   start.time <- Sys.time()
 
@@ -69,9 +69,9 @@ function(var,hour_min=c("00:00:00"),infile,outfile){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	      t_units <- ncatt_get(id,t_name,"units")$value}
+	t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
@@ -83,10 +83,10 @@ function(var,hour_min=c("00:00:00"),infile,outfile){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	      assign(v_att_list[i],att_dum$value)}
+	assign(v_att_list[i],att_dum$value)}
     }
 
-  # get details of file
+      # get details of file
 
 	lon <- ncvar_get(id,lon_name)
 	lat <- ncvar_get(id,lat_name)
@@ -107,15 +107,15 @@ function(var,hour_min=c("00:00:00"),infile,outfile){
 
 # extract time information
 
-  date.time <- get_time(t_units,time1)
+  date.time <- as.Date(get_time(t_units,time1))
   a <- as.character(date.time)
-  b <- strsplit(a," ")
+  b <- strsplit(a,"-")
   d <- unlist(b)
   dummy <- length(d)
-  dum <- seq(2,dummy,2)
-  hms <- d[dum]
-
- if (length(which(hour_min==hms))>=1){
+  dum <- seq(2,dummy,3)
+  mon <- as.integer(d[dum])
+  dum <- seq(1,dummy,3)
+  years <- as.integer(d[dum])
 
   target <- array(NA,dim=c(length(lon),length(lat),1))
   time_bnds <- array(NA, dim=c(2,1))
@@ -190,32 +190,27 @@ function(var,hour_min=c("00:00:00"),infile,outfile){
 
     }
 
-    # extract desired month from infile
+    # multiply each timestep with a constant number
 
       id <- nc_open(infile)
       count <- 1
   
-
       for (i in 1:length(time1)){
-       for (j in 1:length(hour_min)){
-	if (hms[i]==hour_min[j]){
-	  dum_dat <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
-	  dum_dat[is.na(dum_dat)] <- v_missing_value
-	  ncvar_put(ncnew,var1,dum_dat,start=c(1,1,count),count=c(-1,-1,1))
-	  ncvar_put(ncnew,t,time1[i], start=count, count=1)
-	  if ("time_bnds" %in% varnames){
-	    ncvar_put(ncnew,var2,tbnds1[,i],start=c(1,count),count=c(-1,1))
-	  }
-	  count <- count+1
-	}
-       }
+    	  dum_dat <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
+	      cat("\r","add constant to timestep ",i," of ",length(time1),sep="")
+	      dum_dat <- dum_dat+const
+	      dum_dat[is.na(dum_dat)] <- v_missing_value
+	      ncvar_put(ncnew,var1,dum_dat,start=c(1,1,count),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,time1[i], start=count, count=1)
+	      if ("time_bnds" %in% varnames){
+	        ncvar_put(ncnew,var2,tbnds1[,i],start=c(1,count),count=c(-1,1))
+	      }
+	      count <- count+1
       }
       nc_close(id)
       nc_close(ncnew)
 
- } else { cat("No match. Times are:",hms, "\n")}
-
 end.time <- Sys.time()
-cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
+cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
   } # endif filecheck
 }

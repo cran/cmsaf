@@ -3,10 +3,6 @@ function(var,infile,outfile){
 
   start.time <- Sys.time()
 
-# loading libraries
-
-  #library(ncdf4)
-
 # check filename
 
   filecheck <- checkfile(infile,outfile)
@@ -73,9 +69,9 @@ function(var,infile,outfile){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	t_units <- ncatt_get(id,t_name,"units")$value}
+	      t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
@@ -87,7 +83,7 @@ function(var,infile,outfile){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
       # get details of file
@@ -181,7 +177,7 @@ function(var,infile,outfile){
       dum_dat <- array(NA,dim=c(length(lon),length(lat),length(startt)))
       id <- nc_open(infile)
       for (i in 1:length(startt)){
-	dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,startt[i]),count=c(-1,-1,1),collapse_degen=FALSE)
+	      dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,startt[i]),count=c(-1,-1,1),collapse_degen=FALSE)
       }
       cat("\r","averaging ",j,sep="")
       sum_data <- rowSums(dum_dat,dims=2,na.rm=T)

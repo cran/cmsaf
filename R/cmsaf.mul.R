@@ -3,10 +3,6 @@ function(vari1,vari2,infile1,infile2,outfile){
 
   start.time <- Sys.time()
 
-# loading libaries
-
-  #library(ncdf4)
-
 # check filename
 
   filecheck1 <- checkfile(infile1,outfile)
@@ -59,23 +55,23 @@ function(vari1,vari2,infile1,infile2,outfile){
   dimnames <- names(id$dim)
 
     # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="longitude")(lon_name <- dimnames[i])
-	  if (sn=="latitude")(lat_name <- dimnames[i])
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+    for (i in 1:length(dimnames)){
+	    sn <- ncatt_get(id,dimnames[i],"standard_name")
+	    if (length(sn)>0){
+	      sn <- sn$value
+	      if (sn=="longitude")(lon_name <- dimnames[i])
+	      if (sn=="latitude")(lat_name <- dimnames[i])
+	      if (sn=="time")(t_name <- dimnames[i])
+	    }
+    }
 
   for (i in 1:length(dimnames)){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	t_units <- ncatt_get(id,t_name,"units")$value}
+	      t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
@@ -87,15 +83,15 @@ function(vari1,vari2,infile1,infile2,outfile){
     for (i in 1:length(att_list)){
       att_dum <- ncatt_get(id,vari1,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
       # get data of first file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",vari1," not found! File contains: ",varnames,sep="")),"\n")}
@@ -122,22 +118,22 @@ function(vari1,vari2,infile1,infile2,outfile){
       dimnames <- names(id$dim)
 
     # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="longitude")(lon_name <- dimnames[i])
-	  if (sn=="latitude")(lat_name <- dimnames[i])
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+    for (i in 1:length(dimnames)){
+	    sn <- ncatt_get(id,dimnames[i],"standard_name")
+	    if (length(sn)>0){
+	      sn <- sn$value
+	      if (sn=="longitude")(lon_name <- dimnames[i])
+	      if (sn=="latitude")(lat_name <- dimnames[i])
+	      if (sn=="time")(t_name <- dimnames[i])
+	    }
+    }
 
       # get data of second file
 
-	lon2 <- ncvar_get(id,lon_name)
-	lat2 <- ncvar_get(id,lat_name)
-	time2 <- ncvar_get(id,t_name)
-	time_len2 <- length(time2)
+	  lon2 <- ncvar_get(id,lon_name)
+	  lat2 <- ncvar_get(id,lat_name)
+	  time2 <- ncvar_get(id,t_name)
+	  time_len2 <- length(time2)
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",vari2," not found! File contains: ",varnames,sep="")),"\n")}
@@ -206,13 +202,13 @@ function(vari1,vari2,infile1,infile2,outfile){
       id2 <- nc_open(infile2)
   
       for (i in 1:length(time)){
-	dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,i),count=c(-1,-1,1))
-	dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,i),count=c(-1,-1,1))
-	cat("\r","multiply fields ",i," of ",length(time),sep="")
-	dum_data <- dum_dat1*dum_dat2
-	dum_data[is.na(dum_data)] <- v_missing_value
-	ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
-	ncvar_put(ncnew,t,time[i], start=i, count=1)
+	      dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,i),count=c(-1,-1,1))
+	      dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,i),count=c(-1,-1,1))
+	      cat("\r","multiply fields ",i," of ",length(time),sep="")
+	      dum_data <- dum_dat1*dum_dat2
+	      dum_data[is.na(dum_data)] <- v_missing_value
+	      ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,time[i], start=i, count=1)
       }
       nc_close(id1)
       nc_close(id2)
@@ -240,12 +236,12 @@ function(vari1,vari2,infile1,infile2,outfile){
       dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,1),count=c(-1,-1,1))
   
       for (i in 1:length(time)){	
-	dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,i),count=c(-1,-1,1))
-	cat("\r","multiply fields ",i," of ",length(time),sep="")
-	dum_data <- dum_dat1*dum_dat2
-	dum_data[is.na(dum_data)] <- v_missing_value
-	ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
-	ncvar_put(ncnew,t,time[i], start=i, count=1)
+	      dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,i),count=c(-1,-1,1))
+	      cat("\r","multiply fields ",i," of ",length(time),sep="")
+	      dum_data <- dum_dat1*dum_dat2
+	      dum_data[is.na(dum_data)] <- v_missing_value
+	      ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,time[i], start=i, count=1)
       }
       nc_close(id1)
       nc_close(id2)
@@ -258,12 +254,12 @@ function(vari1,vari2,infile1,infile2,outfile){
       dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,1),count=c(-1,-1,1))
   
       for (i in 1:length(time)){	
-	dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,i),count=c(-1,-1,1))
-	cat("\r","multiply fields ",i," of ",length(time),sep="")
-	dum_data <- dum_dat1*dum_dat2
-	dum_data[is.na(dum_data)] <- v_missing_value
-	ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
-	ncvar_put(ncnew,t,time[i], start=i, count=1)
+	      dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,i),count=c(-1,-1,1))
+	      cat("\r","multiply fields ",i," of ",length(time),sep="")
+	      dum_data <- dum_dat1*dum_dat2
+	      dum_data[is.na(dum_data)] <- v_missing_value
+	      ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,time[i], start=i, count=1)
       }
       nc_close(id1)
       nc_close(id2)

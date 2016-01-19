@@ -3,10 +3,6 @@ function(var,month=c(1),infile,outfile){
 
   start.time <- Sys.time()
 
-# loading libraries
-
-  #library(ncdf4)
-
 # check filename
 
   filecheck <- checkfile(infile,outfile)
@@ -59,23 +55,23 @@ function(var,month=c(1),infile,outfile){
   dimnames <- names(id$dim)
 
     # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="longitude")(lon_name <- dimnames[i])
-	  if (sn=="latitude")(lat_name <- dimnames[i])
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+    for (i in 1:length(dimnames)){
+	    sn <- ncatt_get(id,dimnames[i],"standard_name")
+	    if (length(sn)>0){
+	      sn <- sn$value
+	    if (sn=="longitude")(lon_name <- dimnames[i])
+	    if (sn=="latitude")(lat_name <- dimnames[i])
+	    if (sn=="time")(t_name <- dimnames[i])
+	    }
+    }
 
   for (i in 1:length(dimnames)){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	t_units <- ncatt_get(id,t_name,"units")$value}
+	      t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
