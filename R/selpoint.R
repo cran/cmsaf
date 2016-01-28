@@ -159,7 +159,7 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
   # create netcdf
 
   cat("create netcdf", "\n")    
-    dum_fname <- unlist(strsplit(outfile,"."))
+    dum_fname <- unlist(strsplit(outfile,"\\."))
     if (dum_fname[length(dum_fname)]!="nc")(outfile <- paste(outfile,".nc",sep=""))
     data1[is.na(data1)] <- v_missing_value
     nb2 <- c(0,1)
@@ -232,7 +232,7 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
 
   if (format=="csv"){
     cat("create csv-file", "\n")
-    dum_fname <- unlist(strsplit(outfile,"."))
+    dum_fname <- unlist(strsplit(outfile,"\\."))
     if (dum_fname[length(dum_fname)]!="csv")(outfile <- paste(outfile,".csv",sep=""))
     Data <- data1
     Time <- get_time(t_units,time1)

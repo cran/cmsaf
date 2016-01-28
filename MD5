@@ -1,4 +1,4 @@
-1a1bb8b4ee12ebfa795041e9401a059a *DESCRIPTION
+982cf16a412fa0f80782a6f8d865195f *DESCRIPTION
 379696b2bdd20606a8bd617a7f1d5e7d *NAMESPACE
 afe1538f6c00f64962522ff9de85ca5e *R/box_mergetime.R
 3d256060c02f8110ac2336a80d162f8d *R/change_att.R
@@ -33,7 +33,7 @@ a6dfea12074edb1ec84da361cde78259 *R/seasmean.R
 fcdc6d9b3c6fed5bfe1938e1faa21ea5 *R/sellonlatbox.R
 9204cdd62a65f27128ec42a32f0187de *R/selmon.R
 5b02a169c521a6c2421b0cf7182b2adc *R/selperiod.R
-6c8a93127a06ef3a7f33f892a9a3e238 *R/selpoint.R
+d54d0def885ccf9b5e9f6822de282d3d *R/selpoint.R
 298f70d5ee0c7c08a6c3e4abbbca8a15 *R/seltime.R
 1bdda67f35b91117fa6d5a8abb28599e *R/selyear.R
 02dd75883db5e2208da8f9d6718e70e3 *R/timmean.R
