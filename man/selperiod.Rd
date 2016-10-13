@@ -1,7 +1,7 @@
 \name{selperiod}
 \alias{selperiod}
 \title{
-Extract a list of months.
+Extract a list of dates.
 }
 \description{
 This function selects a time period from a timeseries.

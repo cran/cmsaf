@@ -14,7 +14,8 @@ function(infile, info="s"){
   dimnames <- names(id$dim)
   varnames <- names(id$var)
 
-if (info=="l"){ cat(str(id),"\n")}
+if (info=="l"){ cat(str(id),"\n")
+                return(invisible(id))}
 if (info=="m"){ print(id)}
 if (info=="s"){
      cat("The file:",id$filename,"contains:", "\n")
@@ -24,7 +25,7 @@ if (info=="s"){
     } else {
       cat("\n","Variables:",sep="", "\n")
       for (i in 1:length(varnames)){
-	cat(varnames[i], "\n")
+	      cat(varnames[i], "\n")
       }
     }
     

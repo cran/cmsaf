@@ -38,7 +38,7 @@ remapbil <- function(var,infile1,infile2,outfile){
    v_missing_value = "undefined"
 
    info = "Created with the CM SAF R toolbox."
-   var_prec="double"
+   var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
    v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
@@ -91,6 +91,10 @@ remapbil <- function(var,infile1,infile2,outfile){
 	lat <- ncvar_get(id,lat_name)
 	time1 <- ncvar_get(id,t_name)
 	time_len <- length(time1)
+	
+	    # check coordinates if CM SAF conform (-180 to 180)
+	if(max(lon) > 180)(lon <- ifelse(lon > 180, -360 + lon, lon))
+
 	if ("time_bnds" %in% varnames){
 	  tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
 	}
@@ -208,15 +212,15 @@ remapbil <- function(var,infile1,infile2,outfile){
    id <- nc_open(infile1)
   
       for (i in 1:length(time1)){
-	  dum_dat <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
-	  cat("\r","bilinear interpolation ",i," of ",length(time1),sep="")
-	  dum_dat <- interp.surface.grid(list(x=lon,y=lat,z=dum_dat),list(x=lon2,y=lat2))$z
-	  dum_dat[is.na(dum_dat)] <- v_missing_value
-	  ncvar_put(ncnew,var1,dum_dat,start=c(1,1,i),count=c(-1,-1,1))
-	  ncvar_put(ncnew,t,time1[i], start=i, count=1)
-	  if ("time_bnds" %in% varnames){
-	    ncvar_put(ncnew,var2,tbnds1[,i],start=c(1,i),count=c(-1,1))
-	  }
+	      dum_dat <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
+	      cat("\r","bilinear interpolation ",i," of ",length(time1),sep="")
+	      dum_dat <- interp.surface.grid(list(x=lon,y=lat,z=dum_dat),list(x=lon2,y=lat2))$z
+	      dum_dat[is.na(dum_dat)] <- v_missing_value
+	      ncvar_put(ncnew,var1,dum_dat,start=c(1,1,i),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,time1[i], start=i, count=1)
+	      if ("time_bnds" %in% varnames){
+	        ncvar_put(ncnew,var2,tbnds1[,i],start=c(1,i),count=c(-1,1))
+	      }
       }
       nc_close(id)
       nc_close(ncnew)

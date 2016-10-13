@@ -39,7 +39,7 @@ function(var,month=c(1),infile,outfile){
    v_missing_value = "undefined"
 
    info = "Created with the CM SAF R toolbox." 
-   var_prec="double"
+   var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
    v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
@@ -147,7 +147,7 @@ function(var,month=c(1),infile,outfile){
     tb <- ncdim_def(name="nb2",units="1",vals=nb2)
 
     var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),prec=var_prec)
-    var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec=var_prec)
+    var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
     vars <- list(var1,var2)
     ncnew <- nc_create(outfile,vars)
 

@@ -9,7 +9,7 @@ function(var,infile,outfile){
 
   if (filecheck[[1]]){
     infile <- filecheck[[2]]
-    outfile <- filecheck[[3]] 
+    outfile <- filecheck[[3]]
 
 # define standard names of variables and dimensions
 
@@ -38,12 +38,12 @@ function(var,infile,outfile){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox." 
-   var_prec="double"
+   info = "Created with the CM SAF R toolbox."
+   var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
    v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
-  
+
 # get file information
 
   cat("get file information", "\n")
@@ -76,7 +76,7 @@ function(var,infile,outfile){
   }
 
   # get information about variables
-	
+
   varnames <- names(id$var)
 
    if (var %in% varnames){
@@ -99,12 +99,12 @@ function(var,infile,outfile){
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
 
-  if (v__FillValue == "undefined"){ 
+  if (v__FillValue == "undefined"){
     v__FillValue = v_missing_value}
-  if (v_missing_value == "undefined"){ 
+  if (v_missing_value == "undefined"){
     v_missing_value = v__FillValue}
 
-  nc_close(id)   
+  nc_close(id)
 
 # extract time information
 
@@ -140,12 +140,12 @@ function(var,infile,outfile){
   count <- 1
   for (i in 1:test_count){
       mon_dummy <- which(mul==test[i+1])
-	if (length(mon_dummy)>=1){
-	  time_bnds[1,count] <- time1[min(mon_dummy)]
-	  time_bnds[2,count] <- time1[max(mon_dummy)]
-	  count <- count+1
-	}
-   }
+	  if (length(mon_dummy)>=1){
+	    time_bnds[1,count] <- time1[min(mon_dummy)]
+	    time_bnds[2,count] <- time1[max(mon_dummy)]
+	    count <- count+1
+	  }
+  }
 
 # create netcdf
 
@@ -192,20 +192,20 @@ function(var,infile,outfile){
 
   count <- 1
   for (i in 1:test_count){
-      mon_dummy <- which(mul==test[i+1])
-	if (length(mon_dummy)>=1){
-	  startt <- min(dummy_vec[mon_dummy])
-	  countt <- length(mon_dummy)
-	  id <- nc_open(infile)
-	  dum_dat <- ncvar_get(id,var,start=c(1,1,startt),count=c(-1,-1,countt),collapse_degen=FALSE)
-	  cat("\r","apply monthly sum ",count,sep="")
-	  mean_data <- rowSums(dum_dat,dims=2,na.rm=T)
-	  mean_data[is.na(mean_data)] <- v_missing_value
-	  ncvar_put(ncnew,var1,mean_data,start=c(1,1,count),count=c(-1,-1,1))
-	  count <- count+1
-	}else {
+    mon_dummy <- which(mul==test[i+1])
+	  if (length(mon_dummy)>=1){
+	    startt <- min(dummy_vec[mon_dummy])
+	    countt <- length(mon_dummy)
+	    id <- nc_open(infile)
+	    dum_dat <- ncvar_get(id,var,start=c(1,1,startt),count=c(-1,-1,countt),collapse_degen=FALSE)
+	    cat("\r","apply monthly sum ",count,sep="")
+	    mean_data <- rowSums(dum_dat,dims=2,na.rm=T)*ifelse(rowSums(is.na(dum_dat),dims=2) == dim(dum_dat)[3], NA, 1)
+	    mean_data[is.na(mean_data)] <- v_missing_value
+	    ncvar_put(ncnew,var1,mean_data,start=c(1,1,count),count=c(-1,-1,1))
+	    count <- count+1
+	  }else {
 	   cat("length of month not sufficient", "\n")}
-   }
+  }
  nc_close(id)
 
  nc_close(ncnew)

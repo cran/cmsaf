@@ -43,7 +43,7 @@ function(var,infile,outfile){
    v_missing_value = "undefined"
 
    info = "Created with the CM SAF R toolbox." 
-   var_prec="double"
+   var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
    v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
@@ -99,6 +99,29 @@ function(var,infile,outfile){
 	if ("time_bnds" %in% varnames){
 	  tbnds1 <- ncvar_get(id,"time_bnds")
 	}
+  
+	# calculate field maximum 
+	
+	  maxval <- array(NA,dim=c(time_len))
+	  for (i in 1:time_len){
+	    data1 <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
+	    maxval[i] <- max(data1,na.rm=T)
+	  }
+	
+	  if (v__FillValue == "undefined"){ 
+	    v__FillValue = v_missing_value}
+	  if (v_missing_value == "undefined"){ 
+	    v_missing_value = v__FillValue}
+	
+	# check max to avoid problems with fillvalue
+	  fval <- c(-99,-999,-9999)
+	  maxval <- max(maxval,na.rm=TRUE)
+	  maxval <- abs(maxval)*(-2)
+	  dum <- min(which(fval<maxval,arr.ind=TRUE),na.rm=TRUE)
+	  mval <- fval[dum]
+	  v__FillValue = mval
+	  v_missing_value = mval    
+  
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}

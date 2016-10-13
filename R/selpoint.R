@@ -39,7 +39,7 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
    v_missing_value = "undefined"
 
    info = "Created with the CM SAF R toolbox." 
-   var_prec="double"
+   var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
    v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
@@ -69,21 +69,27 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	t_units <- ncatt_get(id,t_name,"units")$value}
+	      t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
   # get information about variables
 	
   varnames <- names(id$var)
+  
+    # set variable precision 
+    varind   <- which(varnames==var)
+    varprec  <- NULL
+    varprec  <- id$var[[varind]]$prec
+    if (!is.null(varprec))(var_prec <- varprec)
 
    if (var %in% varnames){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
    }else{
       nc_close(id)

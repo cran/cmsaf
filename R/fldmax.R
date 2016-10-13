@@ -39,7 +39,7 @@ function(var,infile,outfile){
    v_missing_value = "undefined"
 
    info = "Created with the CM SAF R toolbox." 
-   var_prec="double"
+   var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
    v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
@@ -78,6 +78,12 @@ function(var,infile,outfile){
   # get information about variables
 	
   varnames <- names(id$var)
+  
+    # set variable precision 
+    varind   <- which(varnames==var)
+    varprec  <- NULL
+    varprec  <- id$var[[varind]]$prec
+    if (!is.null(varprec))(var_prec <- varprec)
 
    if (var %in% varnames){
     for (i in 1:6){
@@ -113,9 +119,6 @@ function(var,infile,outfile){
     v_missing_value = v__FillValue}
 
   nc_close(id)
-
-  #dum <- max(data1,na.rm=T)
-  #if (is.integer(dum)){var_prec="short"}
 
 # create netcdf
 

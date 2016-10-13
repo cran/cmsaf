@@ -1,6 +1,6 @@
 Package: cmsaf
-Version: 1.6.1
-Date: 2016-01-25
+Version: 1.7.0
+Date: 2016-10-11
 Title: Tools for CM SAF Netcdf Data
 Author: Steffen Kothe <Steffen.Kothe@dwd.de>
 Maintainer: Steffen Kothe <Steffen.Kothe@dwd.de>
@@ -22,11 +22,11 @@ Description: The Satellite Application Facility on Climate Monitoring (CM SAF)
   function. The cmsaf R-package functions have only minor checks for deviations 
   from the recommended data structure, and give only few specific error messages. 
   Thus, there is no warranty of accurate results.
-  A Windows binary file and scripts for an easy application of the functions are
-  provided at the CM SAF homepage (http://www.cmsaf.eu/EN/Products/Tools/Tools_node.html).
+  Scripts for an easy application of the functions are provided at the CM SAF homepage 
+  (http://www.cmsaf.eu/EN/Products/Tools/Tools_node.html).
 License: GPL (>= 3)
 Depends: ncdf4, sp, raster, stats, fields
-Packaged: 2016-01-25 16:42:29 UTC; stkothe
 NeedsCompilation: no
+Packaged: 2016-10-11 15:21:43 UTC; stkothe
 Repository: CRAN
-Date/Publication: 2016-01-28 20:45:35
+Date/Publication: 2016-10-13 00:33:28

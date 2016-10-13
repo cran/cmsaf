@@ -15,7 +15,8 @@ Name of input netcdf file (character).
 }
   \item{info}{
 The output can be: long ('l'), medium ('m') and short ('s') (character).
-Default is short ('s').
+Default is short ('s'). The option 'l' additionally returns a list object 
+with file information.
 }
 }
 \details{

@@ -43,7 +43,7 @@ function(var,const=1,infile,outfile){
    v_missing_value = "undefined"
 
    info = "Created with the CM SAF R toolbox." 
-   var_prec="double"
+   var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
    v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")

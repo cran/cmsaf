@@ -47,7 +47,7 @@ function(var,infile,outfile){
    s_info = "1 = positive significant, 0 = not significant, -1 = negative significant"
 
    info = "Created with the CM SAF R toolbox." 
-   var_prec="double"
+   var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
    v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
