@@ -80,7 +80,11 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
     varind   <- which(varnames==var)
     varprec  <- NULL
     varprec  <- id$var[[varind]]$prec
-    if (!is.null(varprec))(var_prec <- varprec)
+    if (!is.null(varprec)){
+      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
+        (var_prec <- varprec)
+      }
+    }
 
    if (var %in% varnames){
     for (i in 1:6){

@@ -4,7 +4,7 @@
 Convert time steps to POSIXct.
 }
 \description{
-Times in netcdf data are generally given in form of a time step and 
+Times in NetCDF data are generally given in form of a time step and 
 a time unit. This functions uses both information to convert them to
 POSIXct time values. 
 }

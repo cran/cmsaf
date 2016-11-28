@@ -69,9 +69,9 @@ function(var,infile,outfile){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	t_units <- ncatt_get(id,t_name,"units")$value}
+	      t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
@@ -83,13 +83,17 @@ function(var,infile,outfile){
     varind   <- which(varnames==var)
     varprec  <- NULL
     varprec  <- id$var[[varind]]$prec
-    if (!is.null(varprec))(var_prec <- varprec)
+    if (!is.null(varprec)){
+      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
+        (var_prec <- varprec)
+      }
+    }
 
    if (var %in% varnames){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
       # set dimensions

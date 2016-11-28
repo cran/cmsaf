@@ -11,29 +11,30 @@ seltime(var, hour_min, infile, outfile)
 }
 \arguments{
   \item{var}{
-Name of netcdf variable (character).
+Name of NetCDF variable (character).
 }
   \item{hour_min}{
 Times, which should be selected, in form of a vector of character values 
-in the form of "HH:MM:SS" (e.g. c("12:00:00") (character).
+in the form of 'HH:MM:SS' (e.g. c('12:00:00') (character).
 }
   \item{infile}{
-Filename of input netcdf file. This may include the directory (character).
+Filename of input NetCDF file. This may include the directory (character).
 }
   \item{outfile}{
-Filename of output netcdf file. This may include the directory (character).
+Filename of output NetCDF file. This may include the directory (character).
 }
 }
 \value{
-A netcdf file including a timeseries of the selected times is written.
+A NetCDF file including a timeseries of the selected times is written.
 }
 \author{
 Steffen Kothe
 }
 \examples{
-## Create an example netcdf file with a similar structure
+## Create an example NetCDF file with a similar structure
 ## as used by CM SAF. The file is created with the ncdf4 package.
-## Alternatively example data can be freely downloaded here: https://wui.cmsaf.eu/
+## Alternatively example data can be freely downloaded here: 
+## <https://wui.cmsaf.eu/>
 
 library(ncdf4)
 
@@ -41,27 +42,27 @@ library(ncdf4)
 
   lon <- seq(5,15,0.5)
   lat <- seq(45,55,0.5)
-  time <- seq(ISOdate(2000,1,1), ISOdate(2000,1,6), "hours")
-  origin <- as.Date("1983-01-01 00:00:00")
-  time <- as.numeric(difftime(time,origin,units="hour"))
+  time <- seq(ISOdate(2000,1,1), ISOdate(2000,1,6), 'hours')
+  origin <- as.Date('1983-01-01 00:00:00')
+  time <- as.numeric(difftime(time,origin,units='hour'))
   data <- array(250:350,dim=c(21,21,121))
 
-## create example netcdf
+## create example NetCDF
 
-   x <- ncdim_def(name="lon",units="degrees_east",vals=lon)
-   y <- ncdim_def(name="lat",units="degrees_north",vals=lat)
-   t <- ncdim_def(name="time",units="hours since 1983-01-01 00:00:00",
+   x <- ncdim_def(name='lon',units='degrees_east',vals=lon)
+   y <- ncdim_def(name='lat',units='degrees_north',vals=lat)
+   t <- ncdim_def(name='time',units='hours since 1983-01-01 00:00:00',
    vals=time,unlim=TRUE)
-   var1 <- ncvar_def("SIS","W m-2",list(x,y,t),-1,prec="short")
+   var1 <- ncvar_def('SIS','W m-2',list(x,y,t),-1,prec='short')
    vars <- list(var1)
-   ncnew <- nc_create("CMSAF_example_file.nc",vars)
+   ncnew <- nc_create('CMSAF_example_file.nc',vars)
    ncvar_put(ncnew,var1,data)
-   ncatt_put(ncnew,"lon","standard_name","longitude",prec="text")
-   ncatt_put(ncnew,"lat","standard_name","latitude",prec="text")
+   ncatt_put(ncnew,'lon','standard_name','longitude',prec='text')
+   ncatt_put(ncnew,'lat','standard_name','latitude',prec='text')
    nc_close(ncnew)
 
-## Select all 12:00 and 21:00  values of the example CM SAF netcdf file and write 
-## the output to a new file.
-   seltime("SIS",c("12:00:00","21:00:00"),"CMSAF_example_file.nc", 
-   "CMSAF_example_file_seltime.nc")
+## Select all 12:00 and 21:00  values of the example CM SAF NetCDF  
+## file and write the output to a new file.
+   seltime('SIS',c('12:00:00','21:00:00'),'CMSAF_example_file.nc', 
+   'CMSAF_example_file_seltime.nc')
 }

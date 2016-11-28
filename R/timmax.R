@@ -83,7 +83,11 @@ function(var,infile,outfile){
     varind   <- which(varnames==var)
     varprec  <- NULL
     varprec  <- id$var[[varind]]$prec
-    if (!is.null(varprec))(var_prec <- varprec)
+    if (!is.null(varprec)){
+      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
+        (var_prec <- varprec)
+      }
+    }
 
    if (var %in% varnames){
     for (i in 1:6){
