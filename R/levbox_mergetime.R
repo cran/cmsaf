@@ -254,6 +254,7 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
 
       if ("time_bnds" %in% varnames){
 	      dum_tb <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
+	      dum_tb <- dum_tb + dum_time
       }
 
       nc_close(id)

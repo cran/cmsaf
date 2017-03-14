@@ -59,23 +59,23 @@ function(var,infile,outfile){
   dimnames <- names(id$dim)
 
     # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="longitude")(lon_name <- dimnames[i])
-	  if (sn=="latitude")(lat_name <- dimnames[i])
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+    for (i in 1:length(dimnames)){
+	    sn <- ncatt_get(id,dimnames[i],"standard_name")
+	    if (length(sn)>0){
+	      sn <- sn$value
+	      if (sn=="longitude")(lon_name <- dimnames[i])
+	      if (sn=="latitude")(lat_name <- dimnames[i])
+	      if (sn=="time")(t_name <- dimnames[i])
+	    }
+    }
 
   for (i in 1:length(dimnames)){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	t_units <- ncatt_get(id,t_name,"units")$value}
+	      t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
@@ -87,7 +87,7 @@ function(var,infile,outfile){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
       # get details of file
@@ -107,7 +107,7 @@ function(var,infile,outfile){
 
   # check data dimensions 
   
-  if ((length(lon)*length(lat)*time_len)<limit){
+  if ((as.numeric(length(lon))*as.numeric(length(lat))*as.numeric(time_len))<limit){
 
     # calculate temporal mean in a sequence depending on limit
 

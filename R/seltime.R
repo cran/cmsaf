@@ -204,7 +204,6 @@ function(var,hour_min=c("00:00:00"),infile,outfile){
 
       id <- nc_open(infile)
       count <- 1
-  
 
       for (i in 1:length(time1)){
        for (j in 1:length(hour_min)){

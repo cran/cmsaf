@@ -49,19 +49,18 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
   id <- nc_open(file)
 
   # get information about dimensions
-
   dimnames <- names(id$dim)
 
-    # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="longitude")(lon_name <- dimnames[i])
-	  if (sn=="latitude")(lat_name <- dimnames[i])
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+  # check standard_names of dimensions
+  for (i in 1:length(dimnames)){
+	  sn <- ncatt_get(id,dimnames[i],"standard_name")
+	  if (length(sn)>0){
+	    sn <- sn$value
+	    if (sn=="longitude")(lon_name <- dimnames[i])
+	    if (sn=="latitude")(lat_name <- dimnames[i])
+	    if (sn=="time")(t_name <- dimnames[i])
+	  }
+  }
 
   for (i in 1:length(dimnames)){
     if (t_name %in% dimnames){
@@ -124,9 +123,10 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
 	countt <- length(time1)
 
 	target <- ncvar_get(id,var,start=c(startx,starty,1),count=c(countx,county,countt))
-   }else{
-      nc_close(id)
-      stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
+	
+  } else {
+     nc_close(id)
+     stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
 
   if (v__FillValue == "undefined"){ 
     v__FillValue = v_missing_value}
@@ -254,6 +254,7 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90){
 
       if ("time_bnds" %in% varnames){
 	      dum_tb <- ncvar_get(id,"time_bnds")
+	      dum_tb <- dum_tb + dum_time
       }
 
       nc_close(id)

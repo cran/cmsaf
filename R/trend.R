@@ -141,7 +141,7 @@ function(var,infile,outfile){
 
  # create netcdf
 
-  cat("create netcdf", "\n")
+  cat("\n","create netcdf","\n")
 
     target[is.na(target)] <- v_missing_value
     target_p[is.na(target)] <- v_missing_value

@@ -1,5 +1,5 @@
-selmon <-
-function(var,month=c(1),infile,outfile){
+extract.level <-
+function(var,infile,outfile,level=1){
 
   start.time <- Sys.time()
 
@@ -9,7 +9,7 @@ function(var,month=c(1),infile,outfile){
 
   if (filecheck[[1]]){
     infile <- filecheck[[2]]
-    outfile <- filecheck[[3]]    
+    outfile <- filecheck[[3]]  
 
 # define standard names of variables and dimensions
 
@@ -54,16 +54,16 @@ function(var,month=c(1),infile,outfile){
 
   dimnames <- names(id$dim)
 
-    # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="longitude")(lon_name <- dimnames[i])
-	  if (sn=="latitude")(lat_name <- dimnames[i])
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+  # check standard_names of dimensions
+  for (i in 1:length(dimnames)){
+	  sn <- ncatt_get(id,dimnames[i],"standard_name")
+	  if (length(sn)>0){
+	    sn <- sn$value
+	    if (sn=="longitude")(lon_name <- dimnames[i])
+	    if (sn=="latitude")(lat_name <- dimnames[i])
+	    if (sn=="time")(t_name <- dimnames[i])
+	  }
+  }
 
   for (i in 1:length(dimnames)){
     if (t_name %in% dimnames){
@@ -96,15 +96,39 @@ function(var,month=c(1),infile,outfile){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get details of file
+    # get data of selected level
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
+	  if ("time_bnds" %in% varnames){
+	    tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
+	  }
+	
+	  # check level
+	  if (length(dimnames==4)){
+	    start <- c(1,1,1,1)
+	    count <- c(-1,-1,-1,-1)
+	    # identify level dimension
+	    dummy <- match(dimnames,c(t_name,lon_name,lat_name))
+	    leveldim <- which(is.na(dummy))
+	    levellen <- id$dim[[leveldim]]$len
+	  
+	    if (level!="all"){
+	      if (level>levellen){
+	        stop(cat(paste("Dimension ",id$dim[[leveldim]]$name," has length: ",levellen,sep="")),"\n")
+	      }
+	      loop <- 1
+	      start[3] <- level
+	      count[3] <- 1
+	      data <- ncvar_get(id,var,start=start,count=count)
+	    } else {
+	      loop <- levellen
+	      data <- ncvar_get(id,var,start=start,count=count)
+	    }
+	  }
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	if ("time_bnds" %in% varnames){
-	  tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
-	}
-   }else{
+  } else {
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
 
@@ -113,37 +137,38 @@ function(var,month=c(1),infile,outfile){
   if (v_missing_value == "undefined"){ 
     v_missing_value = v__FillValue}
 
-  nc_close(id)   
+  nc_close(id)
 
-# extract time information
-
-  date.time <- as.Date(get_time(t_units,time1))
-  a <- as.character(date.time)
-  b <- strsplit(a,"-")
-  d <- unlist(b)
-  dummy <- length(d)
-  dum <- seq(2,dummy,3)
-  mon <- d[dum]
-  mon <- as.numeric(mon)
-
- if (sum(!is.na(match(mon,month)))>=1){
-
-  target <- array(NA,dim=c(length(lon),length(lat),1))
-  time_bnds <- array(NA, dim=c(2,1))
-
- # create netcdf
+# create netcdf
 
   cat("create netcdf", "\n")
+  
+  for (i in 1:loop){
+    
+    if (level!="all"){
+      outfile1 <- outfile
+      data1 <- data
+    } else {
+      outfile1 <- paste(strsplit(outfile,split=".nc"),"_level",i,".nc",sep="")
+      z <- which(dim(data)==levellen)
+      if (z==3&length(dim(data))==3){data1 <- data[,,i]}
+      if (z==3&length(dim(data))==4){data1 <- data[,,i,]}
+    }
 
-    target[is.na(target)] <- v_missing_value
+    if (length(time1)==1){
+      dummy <- array(NA,dim=c(dim(data1)[1],dim(data1)[2],1))
+      dummy[,,1] <- data1
+      data1 <- dummy
+    }
 
+    data1[is.na(data1)] <- v_missing_value
     nb2 <- c(0,1)
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
-    t <- ncdim_def(name="time",units=t_units,vals=0,unlim=TRUE)
+    t <- ncdim_def(name="time",units=t_units,vals=time1,unlim=TRUE)
     if ("time_bnds" %in% varnames){
-      tb <- ncdim_def(name="nb2",units="1",vals=nb2)
+      tb <- ncdim_def(name="nb2",units=nb2_units,vals=nb2)
     }
 
     var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),prec=var_prec)
@@ -151,10 +176,10 @@ function(var,month=c(1),infile,outfile){
     if ("time_bnds" %in% varnames){
       var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
       vars <- list(var1,var2)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile1,vars)
 
-      ncvar_put(ncnew,var1,target)
-      ncvar_put(ncnew,var2,time_bnds)
+      ncvar_put(ncnew,var1,data1)
+      ncvar_put(ncnew,var2,tbnds1)
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
@@ -177,9 +202,9 @@ function(var,month=c(1),infile,outfile){
 
     } else {
       vars <- list(var1)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile1,vars)
 
-      ncvar_put(ncnew,var1,target)
+      ncvar_put(ncnew,var1,data1)
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
@@ -201,31 +226,11 @@ function(var,month=c(1),infile,outfile){
 
     }
 
-    # extract desired months from infile
-
-      id <- nc_open(infile)
-      count <- 1
-  
-      for (i in 1:length(time1)){
-       for (j in 1:length(month)){
-	      if (mon[i]==month[j]){
-	        dum_dat <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
-	        dum_dat[is.na(dum_dat)] <- v_missing_value
-	        ncvar_put(ncnew,var1,dum_dat,start=c(1,1,count),count=c(-1,-1,1))
-	        ncvar_put(ncnew,t,time1[i], start=count, count=1)
-	      if ("time_bnds" %in% varnames){
-	        ncvar_put(ncnew,var2,tbnds1[,i],start=c(1,count),count=c(-1,1))
-	      }
-	      count <- count+1
-	      }
-       }
-      }
-      nc_close(id)
-      nc_close(ncnew)
-
- } else { cat("No match. Months are:",mon, "\n")}
+    nc_close(ncnew)
+    
+  } # end for loop
 
 end.time <- Sys.time()
-cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
+cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s", sep="","\n")
   } # endif filecheck
 }

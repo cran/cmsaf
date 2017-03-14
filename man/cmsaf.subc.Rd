@@ -1,7 +1,7 @@
 \name{cmsaf.subc}
 \alias{cmsaf.subc}
 \title{
-Add a constant to a dataset.
+Subtract a constant from a dataset.
 }
 \description{
 This function subtracts a given constant number from each element of a dataset.  

@@ -178,7 +178,7 @@ function(var,infile,outfile){
     id <- nc_open(infile)
     dum_dat <- ncvar_get(id,var,start=c(1,1,startt),count=c(-1,-1,countt),collapse_degen=FALSE)
     cat("\r","apply annual sum ",count,sep="")
-    mean_data <- rowSums(dum_dat,dims=2,na.rm=T)
+    mean_data <- rowSums(dum_dat,dims=2,na.rm=T)*ifelse(rowSums(is.na(dum_dat),dims=2) == dim(dum_dat)[3], NA, 1)
     mean_data[is.na(mean_data)] <- v_missing_value
     ncvar_put(ncnew,var1,mean_data,start=c(1,1,count),count=c(-1,-1,1))
     count <- count+1

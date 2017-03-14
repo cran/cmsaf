@@ -126,7 +126,7 @@ function(var,year=c(2000),infile,outfile){
   years <- d[dum]
   years <- as.numeric(years)
 
- if (length(which(year==years))>=1){
+ if (sum(!is.na(match(years,year)))>=1){
 
   target <- array(NA,dim=c(length(lon),length(lat),1))
   time_bnds <- array(NA, dim=c(2,1))
