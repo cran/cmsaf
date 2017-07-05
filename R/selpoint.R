@@ -1,5 +1,5 @@
 selpoint <-
-function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
+function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
 
   start.time <- Sys.time()
 
@@ -53,17 +53,26 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
   # get information about dimensions
 
   dimnames <- names(id$dim)
+  dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
     # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="longitude")(lon_name <- dimnames[i])
-	  if (sn=="latitude")(lat_name <- dimnames[i])
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+    for (i in 1:length(dimnames)){
+	    sn <- ncatt_get(id,dimnames[i],"standard_name")
+	    ln <- ncatt_get(id,dimnames[i],"long_name")
+	    if (sn$hasatt){
+	      sn <- sn$value
+	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	    } else {
+	        if (ln$hasatt){
+	          ln <- ln$value
+	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	        }
+	    }
+    }
 
   for (i in 1:length(dimnames)){
     if (t_name %in% dimnames){
@@ -168,7 +177,18 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
 
   # create netcdf
 
-  cat("create netcdf", "\n")    
+  cat("create netcdf", "\n")  
+
+   # NetCDF format 3 or 4
+  
+  if (nc34==4){
+    nc_format <- as.logical(1)
+    compression = 4
+  } else {
+    nc_format <- as.logical(0)
+    compression = NA
+  }
+ 
     dum_fname <- unlist(strsplit(outfile,"\\."))
     if (dum_fname[length(dum_fname)]!="nc")(outfile <- paste(outfile,".nc",sep=""))
     data1[is.na(data1)] <- v_missing_value
@@ -181,20 +201,19 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
       tb <- ncdim_def(name="nb2",units=nb2_units,vals=nb2)
     }
 
-    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),prec=var_prec)
+    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),missval=v_missing_value,
+                      prec=var_prec,compression=compression)
 
     if ("time_bnds" %in% varnames){
       var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
       vars <- list(var1,var2)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
       ncvar_put(ncnew,var1,data1)
       ncvar_put(ncnew,var2,tbnds1)
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"_FillValue",v__FillValue,prec=var_prec)
-      ncatt_put(ncnew,var,"missing_value",v_missing_value,prec=var_prec)
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -212,14 +231,12 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
 
     } else {
       vars <- list(var1)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
       ncvar_put(ncnew,var1,data1)
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"_FillValue",v__FillValue,prec=var_prec)
-      ncatt_put(ncnew,var,"missing_value",v_missing_value,prec=var_prec)
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -252,7 +269,7 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc"){
 
   } else {cat("WARNING! Coordinates outside of the domain.", "\n")}
 
-end.time <- Sys.time()
-cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s", sep="", "\n")
+  end.time <- Sys.time()
+  cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s", sep="", "\n")
   } # endif filecheck
 }

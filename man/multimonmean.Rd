@@ -9,7 +9,7 @@ NetCDF input file. The months are given as a vector of integers from 1 to 12.
 This allows means of user-defined seasons.
 }
 \usage{
-multimonmean(var, month, infile, outfile)
+multimonmean(var, month, infile, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -24,6 +24,10 @@ Filename of input NetCDF file. This may include the directory (character).
 }
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

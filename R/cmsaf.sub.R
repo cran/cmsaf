@@ -1,5 +1,5 @@
 cmsaf.sub <-
-function(vari1,vari2,infile1,infile2,outfile){
+function(vari1,vari2,infile1,infile2,outfile,nc34=3){
 
   start.time <- Sys.time()
 
@@ -53,15 +53,24 @@ function(vari1,vari2,infile1,infile2,outfile){
   # get information about dimensions
 
   dimnames <- names(id$dim)
+  dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
     # check standard_names of dimensions
     for (i in 1:length(dimnames)){
 	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    if (length(sn)>0){
+	    ln <- ncatt_get(id,dimnames[i],"long_name")
+	    if (sn$hasatt){
 	      sn <- sn$value
-	      if (sn=="longitude")(lon_name <- dimnames[i])
-	      if (sn=="latitude")(lat_name <- dimnames[i])
-	      if (sn=="time")(t_name <- dimnames[i])
+	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	    } else {
+	        if (ln$hasatt){
+	          ln <- ln$value
+	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	        }
 	    }
     }
 
@@ -78,6 +87,17 @@ function(vari1,vari2,infile1,infile2,outfile){
   # get information about variables
 	
   varnames <- names(id$var)
+  
+   # get variable precision 
+    varind    <- which(varnames==vari1)
+    varprec   <- NULL
+    var_prec1 <- NULL
+    varprec   <- id$var[[varind]]$prec
+    if (!is.null(varprec)){
+      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
+        (var_prec1 <- varprec)
+      }
+    }
 
    if (vari1 %in% varnames){
     for (i in 1:length(att_list)){
@@ -88,18 +108,43 @@ function(vari1,vari2,infile1,infile2,outfile){
 
       # get data of first file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
-   }else{
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
+   } else {
       nc_close(id)
       stop(cat(paste("Variable ",vari1," not found! File contains: ",varnames,sep="")),"\n")}
 
-  if (v__FillValue == "undefined"){ 
-    v__FillValue = v_missing_value}
-  if (v_missing_value == "undefined"){ 
-    v_missing_value = v__FillValue}
+      # calculate field maximum 
+	
+	 maxval <- array(NA,dim=c(3))
+	 if (time_len>=3){
+	   samp <- sample(c(1:time_len),3)
+	 } else {
+	   samp <- 1
+	 }
+	 count <- 1
+	 for (i in samp){
+	   data1 <- ncvar_get(id,vari1,start=c(1,1,i),count=c(-1,-1,1))
+	   maxval[count] <- max(data1,na.rm=T)
+	   count <- count+1
+	 }
+ 	
+	 if (v__FillValue == "undefined"){ 
+	     v__FillValue = v_missing_value}
+	 if (v_missing_value == "undefined"){ 
+	     v_missing_value = v__FillValue}
+	
+	  # check max to avoid problems with fillvalue
+	
+	  fval <- c(-99,-999,-9999)
+	  maxval <- max(maxval,na.rm=TRUE)
+	  maxval <- abs(maxval)*(-2.5)
+	  dum <- min(which(fval<maxval,arr.ind=TRUE),na.rm=TRUE)
+	  mval <- fval[dum]
+	  v__FillValue = mval
+	  v_missing_value = mval   
 
   nc_close(id)
 
@@ -112,22 +157,42 @@ function(vari1,vari2,infile1,infile2,outfile){
   # get information about variables
 	
   varnames2 <- names(id$var)
+  
+   # get variable precision 
+    varind    <- which(varnames2==vari2)
+    varprec   <- NULL
+    var_prec2 <- NULL
+    varprec   <- id$var[[varind]]$prec
+    if (!is.null(varprec)){
+      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
+        (var_prec2 <- varprec)
+      }
+    }
 
    if (vari2 %in% varnames2){
 
       dimnames <- names(id$dim)
+      dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
-    # check standard_names of dimensions
+   # check standard_names of dimensions
     for (i in 1:length(dimnames)){
 	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    if (length(sn)>0){
+	    ln <- ncatt_get(id,dimnames[i],"long_name")
+	    if (sn$hasatt){
 	      sn <- sn$value
-	      if (sn=="longitude")(lon_name <- dimnames[i])
-	      if (sn=="latitude")(lat_name <- dimnames[i])
-	      if (sn=="time")(t_name <- dimnames[i])
+	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	    } else {
+	        if (ln$hasatt){
+	          ln <- ln$value
+	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	        }
 	    }
     }
-
+      
       # get data of second file
 
 	  lon2 <- ncvar_get(id,lon_name)
@@ -139,6 +204,13 @@ function(vari1,vari2,infile1,infile2,outfile){
       stop(cat(paste("Variable ",vari2," not found! File contains: ",varnames,sep="")),"\n")}
 
   nc_close(id)
+  
+  # define variable precision
+  
+  if(!is.null(var_prec1)&!is.null(var_prec2)){
+    prec <- c("short", "integer", "float", "double", "char", "byte")
+    var_prec <- prec[max(c(which(var_prec1==prec),which(var_prec2==prec)))]
+  }
 
   # check dimensions of infile1 and infile2
 
@@ -164,23 +236,32 @@ function(vari1,vari2,infile1,infile2,outfile){
 
   cat("create netcdf", "\n")
 
+  # NetCDF format 3 or 4
+  
+  if (nc34==4){
+    nc_format <- as.logical(1)
+    compression = 4
+  } else {
+    nc_format <- as.logical(0)
+    compression = NA
+  }
+
     target[is.na(target)] <- v_missing_value
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
     t <- ncdim_def(name="time",units=t_units,vals=time[1],unlim=TRUE)
 
-    var1 <- ncvar_def(name=vari1,units=v_units,dim=list(x,y,t),prec=var_prec)
+    var1 <- ncvar_def(name=vari1,units=v_units,dim=list(x,y,t),missval=v_missing_value,
+                      prec=var_prec,compression=compression)
 
       vars <- list(var1)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
       ncvar_put(ncnew,var1,target)
 
       ncatt_put(ncnew,vari1,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,vari1,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,vari1,"_FillValue",v__FillValue,prec=var_prec)
-      ncatt_put(ncnew,vari1,"missing_value",v_missing_value,prec=var_prec)
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -266,8 +347,8 @@ function(vari1,vari2,infile1,infile2,outfile){
       nc_close(ncnew)
     }
 
-end.time <- Sys.time()
-cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
+  end.time <- Sys.time()
+  cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
   } # end if case!=0
   } # endif filecheck
 }

@@ -11,7 +11,7 @@ and the December of the previous year (DJF). The other seasons are MAM, JJA,
 and SON. 
 }
 \usage{
-yseasmean(var, infile, outfile)
+yseasmean(var, infile, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -22,6 +22,10 @@ Filename of input NetCDF file. This may include the directory (character).
 }
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

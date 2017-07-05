@@ -10,7 +10,7 @@ regular. For interpolation a simple bilinear interpolation is used as
 provided by the fields-package's interp.surface.grid function.
 }
 \usage{
-remapbil(var, infile1, infile2, outfile)
+remapbil(var, infile1, infile2, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -26,6 +26,10 @@ The grid information of infile2 are the target grid for the interpolation.
 }
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

@@ -9,7 +9,7 @@ is selected by giving the coordinates of the lower left and upper right
 edge of a rectangular grid area.
 }
 \usage{
-sellonlatbox(var, infile, outfile, lon1, lon2, lat1, lat2)
+sellonlatbox(var, infile, outfile, lon1, lon2, lat1, lat2, nc34)
 }
 \arguments{
   \item{var}{
@@ -32,6 +32,10 @@ Latitude of lower left corner (numeric).
 }
   \item{lat2}{
 Latitude of upper right corner (numeric).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

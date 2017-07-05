@@ -1,5 +1,5 @@
 fldmean <-
-function(var,infile,outfile){
+function(var,infile,outfile,nc34=3){
 
   start.time <- Sys.time()
 
@@ -53,15 +53,24 @@ function(var,infile,outfile){
   # get information about dimensions
 
   dimnames <- names(id$dim)
+  dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
     # check standard_names of dimensions
     for (i in 1:length(dimnames)){
 	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    if (length(sn)>0){
+	    ln <- ncatt_get(id,dimnames[i],"long_name")
+	    if (sn$hasatt){
 	      sn <- sn$value
-	    if (sn=="longitude")(lon_name <- dimnames[i])
-	    if (sn=="latitude")(lat_name <- dimnames[i])
-	    if (sn=="time")(t_name <- dimnames[i])
+	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	    } else {
+	        if (ln$hasatt){
+	          ln <- ln$value
+	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	        }
 	    }
     }
 
@@ -117,6 +126,16 @@ function(var,infile,outfile){
 # create netcdf
 
   cat("create netcdf", "\n")
+  
+  # NetCDF format 3 or 4
+  
+  if (nc34==4){
+    nc_format <- as.logical(1)
+    compression = 4
+  } else {
+    nc_format <- as.logical(0)
+    compression = NA
+  }
 
     if (length(time1)==1){
       dummy <- array(NA,dim=c(1,1,1))
@@ -134,20 +153,19 @@ function(var,infile,outfile){
       tb <- ncdim_def(name="nb2",units=nb2_units,vals=nb2)
     }
 
-    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),prec=var_prec)
+    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),missval=v_missing_value,
+                      prec=var_prec,compression=compression)
 
     if ("time_bnds" %in% varnames){
       var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
       vars <- list(var1,var2)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
       ncvar_put(ncnew,var1,target)
       ncvar_put(ncnew,var2,tbnds1)
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"_FillValue",v__FillValue,prec=var_prec)
-      ncatt_put(ncnew,var,"missing_value",v_missing_value,prec=var_prec)
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -162,17 +180,15 @@ function(var,infile,outfile){
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
-
+      
     } else {
       vars <- list(var1)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
       ncvar_put(ncnew,var1,target)
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"_FillValue",v__FillValue,prec=var_prec)
-      ncatt_put(ncnew,var,"missing_value",v_missing_value,prec=var_prec)
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -186,7 +202,7 @@ function(var,infile,outfile){
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
-
+      
     }
 
     nc_close(ncnew)

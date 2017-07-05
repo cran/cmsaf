@@ -11,7 +11,7 @@ for this point. The output-file can be optional in NetCDF or csv.
 The outfile is checked for the correct file extension.
 }
 \usage{
-selpoint(var, infile, outfile, lon1, lat1, format)
+selpoint(var, infile, outfile, lon1, lat1, format, nc34)
 }
 \arguments{
   \item{var}{
@@ -31,6 +31,10 @@ Latitude of desired point (numeric).
 }
   \item{format}{
 Intended output format. Options are 'nc' or 'csv'. Default is 'nc' (character).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

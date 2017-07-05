@@ -9,7 +9,7 @@ file basing on a linear model. Depending on the file size, this function
 could be very time consuming.
 }
 \usage{
-trend(var, infile, outfile)
+trend(var, infile, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -22,10 +22,18 @@ The file should include a time series of 2D fields to work in the desired way.
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
 }
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
+}
 }
 \value{
-A NetCDF file including the trend data is written. An additional variable 
-contains a measure for the significance of the calculated trends. 
+A NetCDF file including three data layers is written. One layer (trend1)
+contains the linear trend multiplied by the number of time steps. In older
+versions of the package (<= 1.7) the trend was given in the same way as trend1.
+Another layer (trend2) contains just the calculated linear trend. An additional 
+layer contains a measure for the significance of the calculated trends, which
+was derived using the 95 % confidence interval. 
 }
 \author{
 Steffen Kothe

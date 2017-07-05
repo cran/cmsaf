@@ -9,7 +9,7 @@ NetCDF input file.This function is applicable to 3-dimensional (lon,lat,time)
 NetCDF data. 
 }
 \usage{
-monmin(var, infile, outfile)
+monmin(var, infile, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -20,6 +20,10 @@ Filename of input NetCDF file. This may include the directory (character).
 }
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

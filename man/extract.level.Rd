@@ -10,7 +10,7 @@ latitude or time. The user can choose either one specific level (given by
 an integer) or all levels (level = "all").  
 }
 \usage{
-extract.level(var, infile, outfile, level)
+extract.level(var, infile, outfile, level, nc34)
 }
 \arguments{
   \item{var}{
@@ -24,6 +24,10 @@ Filename of output NetCDF file. This may include the directory (character).
 }
   \item{level}{
 Number of level (default = 1) or all levels (level = "all") (numeric or character).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

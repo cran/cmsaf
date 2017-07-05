@@ -1,5 +1,5 @@
 cmsaf.div <-
-function(vari1,vari2,infile1,infile2,outfile){
+function(vari1,vari2,infile1,infile2,outfile,nc34=3){
 
   start.time <- Sys.time()
 
@@ -53,15 +53,24 @@ function(vari1,vari2,infile1,infile2,outfile){
   # get information about dimensions
 
   dimnames <- names(id$dim)
+  dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
-    # check standard_names of dimensions
+   # check standard_names of dimensions
     for (i in 1:length(dimnames)){
 	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    if (length(sn)>0){
+	    ln <- ncatt_get(id,dimnames[i],"long_name")
+	    if (sn$hasatt){
 	      sn <- sn$value
-	      if (sn=="longitude")(lon_name <- dimnames[i])
-	      if (sn=="latitude")(lat_name <- dimnames[i])
-	      if (sn=="time")(t_name <- dimnames[i])
+	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	    } else {
+	        if (ln$hasatt){
+	          ln <- ln$value
+	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	        }
 	    }
     }
 
@@ -96,10 +105,35 @@ function(vari1,vari2,infile1,infile2,outfile){
       nc_close(id)
       stop(cat(paste("Variable ",vari1," not found! File contains: ",varnames,sep="")),"\n")}
 
-  if (v__FillValue == "undefined"){ 
-    v__FillValue = v_missing_value}
-  if (v_missing_value == "undefined"){ 
-    v_missing_value = v__FillValue}
+      # calculate field maximum 
+	
+	 maxval <- array(NA,dim=c(3))
+	 if (time_len>=3){
+	   samp <- sample(c(1:time_len),3)
+	 } else {
+	   samp <- 1
+	 }
+	 count <- 1
+	 for (i in samp){
+	   data1 <- ncvar_get(id,vari1,start=c(1,1,i),count=c(-1,-1,1))
+	   maxval[count] <- max(data1,na.rm=T)
+	   count <- count+1
+	 }
+ 	
+	 if (v__FillValue == "undefined"){ 
+	     v__FillValue = v_missing_value}
+	 if (v_missing_value == "undefined"){ 
+	     v_missing_value = v__FillValue}
+	
+	  # check max to avoid problems with fillvalue
+	
+	  fval <- c(-99,-999,-9999)
+	  maxval <- max(maxval,na.rm=TRUE)
+	  maxval <- abs(maxval)*(-2.5)
+	  dum <- min(which(fval<maxval,arr.ind=TRUE),na.rm=TRUE)
+	  mval <- fval[dum]
+	  v__FillValue = mval
+	  v_missing_value = mval   
 
   nc_close(id)
 
@@ -116,6 +150,7 @@ function(vari1,vari2,infile1,infile2,outfile){
    if (vari2 %in% varnames2){
 
       dimnames <- names(id$dim)
+      dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
     # check standard_names of dimensions
     for (i in 1:length(dimnames)){
@@ -164,16 +199,27 @@ function(vari1,vari2,infile1,infile2,outfile){
 
   cat("create netcdf", "\n")
 
+  # NetCDF format 3 or 4
+  
+  if (nc34==4){
+    nc_format <- as.logical(1)
+    compression = 4
+  } else {
+    nc_format <- as.logical(0)
+    compression = NA
+  }
+
     target[is.na(target)] <- v_missing_value
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
     t <- ncdim_def(name="time",units=t_units,vals=time[1],unlim=TRUE)
 
-    var1 <- ncvar_def(name=vari1,units=v_units,dim=list(x,y,t),prec=var_prec)
+    var1 <- ncvar_def(name=vari1,units=v_units,dim=list(x,y,t),missval=v_missing_value,
+                      prec=var_prec,compression=compression)
 
       vars <- list(var1)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
       ncvar_put(ncnew,var1,target)
 
@@ -274,8 +320,8 @@ function(vari1,vari2,infile1,infile2,outfile){
       nc_close(ncnew)
     }
 
-end.time <- Sys.time()
-cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
+  end.time <- Sys.time()
+  cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
   } # end if case!=0
   } # endif filecheck
 }

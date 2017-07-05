@@ -1,5 +1,5 @@
 seas.anomaly <-
-function(var,infile,outfile){
+function(var,infile,outfile,nc34=3){
 
   start.time <- Sys.time()
 
@@ -53,17 +53,26 @@ function(var,infile,outfile){
   # get information about dimensions
 
   dimnames <- names(id$dim)
+  dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
     # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	      sn <- ncatt_get(id,dimnames[i],"standard_name")
-	      if (length(sn)>0){
-	        sn <- sn$value
-	      if (sn=="longitude")(lon_name <- dimnames[i])
-	      if (sn=="latitude")(lat_name <- dimnames[i])
-	      if (sn=="time")(t_name <- dimnames[i])
-	      }
-      }
+    for (i in 1:length(dimnames)){
+	    sn <- ncatt_get(id,dimnames[i],"standard_name")
+	    ln <- ncatt_get(id,dimnames[i],"long_name")
+	    if (sn$hasatt){
+	      sn <- sn$value
+	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	    } else {
+	        if (ln$hasatt){
+	          ln <- ln$value
+	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	        }
+	    }
+    }
 
   for (i in 1:length(dimnames)){
     if (t_name %in% dimnames){
@@ -95,25 +104,33 @@ function(var,infile,outfile){
   
 	# calculate field maximum 
 	
-	  maxval <- array(NA,dim=c(time_len))
-	  for (i in 1:time_len){
-	    data1 <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
-	    maxval[i] <- max(data1,na.rm=T)
-	  }
+	 maxval <- array(NA,dim=c(3))
+	 if (time_len>=3){
+	   samp <- sample(c(1:time_len),3)
+	 } else {
+	   samp <- 1
+	 }
+	 count <- 1
+	 for (i in samp){
+	   data1 <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
+	   maxval[count] <- max(data1,na.rm=T)
+	   count <- count+1
+	 }
+ 	
+	 if (v__FillValue == "undefined"){ 
+	     v__FillValue = v_missing_value}
+	 if (v_missing_value == "undefined"){ 
+	     v_missing_value = v__FillValue}
 	
-	  if (v__FillValue == "undefined"){ 
-	    v__FillValue = v_missing_value}
-	  if (v_missing_value == "undefined"){ 
-	    v_missing_value = v__FillValue}
+	  # check max to avoid problems with fillvalue
 	
-	# check max to avoid problems with fillvalue
 	  fval <- c(-99,-999,-9999)
 	  maxval <- max(maxval,na.rm=TRUE)
-	  maxval <- abs(maxval)*(-2)
+	  maxval <- abs(maxval)*(-2.5)
 	  dum <- min(which(fval<maxval,arr.ind=TRUE),na.rm=TRUE)
 	  mval <- fval[dum]
 	  v__FillValue = mval
-	  v_missing_value = mval    
+	  v_missing_value = mval   
   
    }else{
       nc_close(id)
@@ -163,6 +180,16 @@ function(var,infile,outfile){
 
   cat("create netcdf", "\n")
 
+  # NetCDF format 3 or 4
+  
+  if (nc34==4){
+    nc_format <- as.logical(1)
+    compression = 4
+  } else {
+    nc_format <- as.logical(0)
+    compression = NA
+  }
+
     target[is.na(target)] <- v_missing_value
     nb2 <- c(0,1)
 
@@ -171,18 +198,17 @@ function(var,infile,outfile){
     t <- ncdim_def(name="time",units=t_units,vals=0,unlim=TRUE)
     tb <- ncdim_def(name="nb2",units="1",vals=nb2)
 
-    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),prec=var_prec)
+    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),missval=v_missing_value,
+                      prec=var_prec,compression=compression)
     var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec=var_prec)
     vars <- list(var1,var2)
-    ncnew <- nc_create(outfile,vars)
+    ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
     ncvar_put(ncnew,var1,target)
     ncvar_put(ncnew,var2,tbnds)
 
     ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
     ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-    ncatt_put(ncnew,var,"_FillValue",v__FillValue,prec=var_prec)
-    ncatt_put(ncnew,var,"missing_value",v_missing_value,prec=var_prec)
 
     ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
     ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -205,47 +231,48 @@ function(var,infile,outfile){
   count <- 1
     for (j in 1:4){
       mon_dummy <- seas[j,,]
-	  dum_dat <- array(NA,dim=c(length(lon),length(lat),length(mon_dummy)))
-	   for (i in 1:length(mon_dummy)){
-	    if (!is.na(mon_dummy[i])){
-	      dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,mon_dummy[i]),count=c(-1,-1,1),collapse_degen=FALSE)
+	    dum_dat <- array(NA,dim=c(length(lon),length(lat),length(mon_dummy)))
+	    for (i in 1:length(mon_dummy)){
+	      if (!is.na(mon_dummy[i])){
+	        dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,mon_dummy[i]),count=c(-1,-1,1),collapse_degen=FALSE)
+	      }
 	    }
-	   }
-	  cat("\r","apply multi-year seasonal mean ",count," of 4",sep="")
-	  seas_clim[,,j] <- rowMeans(dum_dat,dims=2,na.rm=T)
-	  count <- count+1
-     }
+	    cat("\r","apply multi-year seasonal mean ",count," of 4",sep="")
+	    seas_clim[,,j] <- rowMeans(dum_dat,dims=2,na.rm=T)
+	    count <- count+1
+    }
 
   # calculate seasonal means
 
   dum_dat <- array(NA,dim=c(length(lon),length(lat),3))
   count <- 1
+  cat("\n")
   for (i in 1:length(yl)){
     for (j in 1:4){
       mon_dummy <- seas[j,,i]
-	if (sum(is.na(mon_dummy))==0){
-	  dum_dat[,,1] <- ncvar_get(id,var,start=c(1,1,mon_dummy[1]),count=c(-1,-1,1),collapse_degen=FALSE)
-	  dum_dat[,,2] <- ncvar_get(id,var,start=c(1,1,mon_dummy[2]),count=c(-1,-1,1),collapse_degen=FALSE)
-	  dum_dat[,,3] <- ncvar_get(id,var,start=c(1,1,mon_dummy[3]),count=c(-1,-1,1),collapse_degen=FALSE)
-	  cat("\r","apply seasonal mean ",count," of ",(length(yl)*4),sep="")
-	  mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
-	  mean_data <- mean_data-seas_clim[,,j]
-	  mean_data[is.na(mean_data)] <- v_missing_value
-	  tdum <- min(time1[mon_dummy])
-	  tbnds[1,1] <- min(time1[mon_dummy])
-	  tbnds[2,1] <- max(time1[mon_dummy])
-	  ncvar_put(ncnew,var1,mean_data,start=c(1,1,count),count=c(-1,-1,1))
-	  ncvar_put(ncnew,t,tdum,start=count,count=1)
-	  ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
-	  count <- count+1
-	}
+	    if (sum(is.na(mon_dummy))==0){
+	      dum_dat[,,1] <- ncvar_get(id,var,start=c(1,1,mon_dummy[1]),count=c(-1,-1,1),collapse_degen=FALSE)
+	      dum_dat[,,2] <- ncvar_get(id,var,start=c(1,1,mon_dummy[2]),count=c(-1,-1,1),collapse_degen=FALSE)
+	      dum_dat[,,3] <- ncvar_get(id,var,start=c(1,1,mon_dummy[3]),count=c(-1,-1,1),collapse_degen=FALSE)
+	      cat("\r","apply seasonal mean ",count," of ",(length(yl)*4),sep="")
+	      mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
+	      mean_data <- mean_data-seas_clim[,,j]
+	      mean_data[is.na(mean_data)] <- v_missing_value
+	      tdum <- min(time1[mon_dummy])
+	      tbnds[1,1] <- min(time1[mon_dummy])
+	      tbnds[2,1] <- max(time1[mon_dummy])
+	      ncvar_put(ncnew,var1,mean_data,start=c(1,1,count),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,tdum,start=count,count=1)
+	      ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
+	      count <- count+1
+	    }
      }
    }
  nc_close(id)
 
  nc_close(ncnew)
 
-end.time <- Sys.time()
-cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
+  end.time <- Sys.time()
+  cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
   } # endif filecheck
 }

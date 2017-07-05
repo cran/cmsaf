@@ -1,5 +1,5 @@
 cmsaf.add <-
-function(vari1,vari2,infile1,infile2,outfile){
+function(vari1,vari2,infile1,infile2,outfile,nc34=3){
 
   start.time <- Sys.time()
 
@@ -53,17 +53,26 @@ function(vari1,vari2,infile1,infile2,outfile){
   # get information about dimensions
 
   dimnames <- names(id$dim)
+  dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
-    # check standard_names of dimensions
-      for (i in 1:length(dimnames)){
-	sn <- ncatt_get(id,dimnames[i],"standard_name")
-	if (length(sn)>0){
-	  sn <- sn$value
-	  if (sn=="longitude")(lon_name <- dimnames[i])
-	  if (sn=="latitude")(lat_name <- dimnames[i])
-	  if (sn=="time")(t_name <- dimnames[i])
-	}
-      }
+   # check standard_names of dimensions
+    for (i in 1:length(dimnames)){
+	    sn <- ncatt_get(id,dimnames[i],"standard_name")
+	    ln <- ncatt_get(id,dimnames[i],"long_name")
+	    if (sn$hasatt){
+	      sn <- sn$value
+	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	    } else {
+	        if (ln$hasatt){
+	          ln <- ln$value
+	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	        }
+	    }
+    }
 
   for (i in 1:length(dimnames)){
     if (t_name %in% dimnames){
@@ -116,6 +125,7 @@ function(vari1,vari2,infile1,infile2,outfile){
    if (vari2 %in% varnames2){
 
       dimnames <- names(id$dim)
+      dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
     # check standard_names of dimensions
       for (i in 1:length(dimnames)){
@@ -164,6 +174,16 @@ function(vari1,vari2,infile1,infile2,outfile){
 
   cat("create netcdf", "\n")
 
+  # NetCDF format 3 or 4
+  
+  if (nc34==4){
+    nc_format <- as.logical(1)
+    compression = 4
+  } else {
+    nc_format <- as.logical(0)
+    compression = NA
+  }
+
     target[is.na(target)] <- v_missing_value
 
 
@@ -171,17 +191,16 @@ function(vari1,vari2,infile1,infile2,outfile){
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
     t <- ncdim_def(name="time",units=t_units,vals=time[1],unlim=TRUE)
 
-    var1 <- ncvar_def(name=vari1,units=v_units,dim=list(x,y,t),prec=var_prec)
+   var1 <- ncvar_def(name=vari1,units=v_units,dim=list(x,y,t),missval=v_missing_value,
+                      prec=var_prec,compression=compression)
 
       vars <- list(var1)
-      ncnew <- nc_create(outfile,vars)
+      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
       ncvar_put(ncnew,var1,target)
 
       ncatt_put(ncnew,vari1,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,vari1,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,vari1,"_FillValue",v__FillValue,prec=var_prec)
-      ncatt_put(ncnew,vari1,"missing_value",v_missing_value,prec=var_prec)
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -267,8 +286,8 @@ function(vari1,vari2,infile1,infile2,outfile){
       nc_close(ncnew)
     }
 
-end.time <- Sys.time()
-cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
+  end.time <- Sys.time()
+  cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
   } # end if case!=0
   } # endif filecheck
 }

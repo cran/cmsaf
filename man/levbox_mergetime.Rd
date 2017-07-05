@@ -12,7 +12,7 @@ level and variable. The reference time of the output file is determined by
 the first input file.
 }
 \usage{
-levbox_mergetime(var,level,path,pattern,outfile,lon1,lon2,lat1,lat2)
+levbox_mergetime(var,level,path,pattern,outfile,lon1,lon2,lat1,lat2,nc34)
 }
 \arguments{
   \item{var}{
@@ -41,6 +41,10 @@ Latitude of lower left corner (numeric).
 }
   \item{lat2}{
 Latitude of upper right corner (numeric).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

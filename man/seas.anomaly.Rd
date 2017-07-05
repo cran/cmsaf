@@ -8,7 +8,7 @@ The function determines the seasonal means of a timeseries and substracts
 the corresponding multi-seasonal means to get seasonal anomalies.
 }
 \usage{
-seas.anomaly(var, infile, outfile)
+seas.anomaly(var, infile, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -19,6 +19,10 @@ Filename of input NetCDF file. This may include the directory (character).
 }
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
+}
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
 }
 }
 \value{

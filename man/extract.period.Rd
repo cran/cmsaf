@@ -4,13 +4,11 @@
 Remove a time period.
 }
 \description{
-This function deletes a time period from a timeseries. If start and end
-are the same, only this date will be removed.The resulting NetCDF files
-contain only the dimensions longitude, latitude and time, and can be used
-with the functions of the 'cmsaf' package.
+This function deletes a time period between a given start and end date from 
+a timeseries. If start and end are the same, only this date will be removed. 
 }
 \usage{
-extract.period(var, start, end, infile, outfile)
+extract.period(var, start, end, infile, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -28,9 +26,13 @@ Filename of input NetCDF file. This may include the directory (character).
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
 }
+  \item{nc34}{
+NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
+Default output is NetCDFv3.
+}
 }
 \value{
-A NetCDF file including the selected time period is written.
+A NetCDF file excluding the selected time period is written.
 }
 \author{
 Steffen Kothe
