@@ -1,6 +1,6 @@
 Package: cmsaf
-Version: 1.8.0
-Date: 2017-07-04
+Version: 1.8.1
+Date: 2017-07-10
 Title: Tools for CM SAF NetCDF Data
 Author: Steffen Kothe <Steffen.Kothe@dwd.de>
 Maintainer: Steffen Kothe <Steffen.Kothe@dwd.de>
@@ -26,6 +26,6 @@ Description: The Satellite Application Facility on Climate Monitoring (CM SAF)
 License: GPL (>= 3)
 Depends: ncdf4, sp, raster, stats, fields
 NeedsCompilation: no
-Packaged: 2017-07-05 14:50:56 UTC; stkothe
+Packaged: 2017-07-10 15:52:34 UTC; stkothe
 Repository: CRAN
-Date/Publication: 2017-07-05 22:56:11 UTC
+Date/Publication: 2017-07-11 10:36:43 UTC

@@ -53,24 +53,25 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
   # get information about dimensions
 
   dimnames <- names(id$dim)
-  dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
-    # check standard_names of dimensions
+ # check standard_names of dimensions
     for (i in 1:length(dimnames)){
 	    sn <- ncatt_get(id,dimnames[i],"standard_name")
 	    ln <- ncatt_get(id,dimnames[i],"long_name")
-	    if (sn$hasatt){
-	      sn <- sn$value
-	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
-	    } else {
-	        if (ln$hasatt){
-	          ln <- ln$value
-	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
-	        }
+	    if (!is.null(sn$hasatt)){
+	      if (sn$hasatt){
+	        sn <- sn$value
+	        if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	        if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	        if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	      } else {
+	          if (ln$hasatt){
+	            ln <- ln$value
+	            if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	            if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	            if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	          }
+	       }
 	    }
     }
 
@@ -149,17 +150,26 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
 
    if (vari2 %in% varnames2){
 
-      dimnames <- names(id$dim)
-      dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
+    dimnames <- names(id$dim)
 
     # check standard_names of dimensions
     for (i in 1:length(dimnames)){
 	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    if (length(sn)>0){
-	      sn <- sn$value
-	      if (sn=="longitude")(lon_name <- dimnames[i])
-	      if (sn=="latitude")(lat_name <- dimnames[i])
-	      if (sn=="time")(t_name <- dimnames[i])
+	    ln <- ncatt_get(id,dimnames[i],"long_name")
+	    if (!is.null(sn$hasatt)){
+	      if (sn$hasatt){
+	        sn <- sn$value
+	        if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	        if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	        if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	      } else {
+	          if (ln$hasatt){
+	            ln <- ln$value
+	            if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	            if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	            if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	          }
+	       }
 	    }
     }
 

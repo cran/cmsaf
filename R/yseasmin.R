@@ -53,24 +53,25 @@ function(var,infile,outfile,nc34=3){
   # get information about dimensions
 
   dimnames <- names(id$dim)
-  dimnames <- dimnames[!dimnames %in% "nb2"] # this can cause trouble
 
-    # check standard_names of dimensions
+ # check standard_names of dimensions
     for (i in 1:length(dimnames)){
 	    sn <- ncatt_get(id,dimnames[i],"standard_name")
 	    ln <- ncatt_get(id,dimnames[i],"long_name")
-	    if (sn$hasatt){
-	      sn <- sn$value
-	      if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	      if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	      if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
-	    } else {
-	        if (ln$hasatt){
-	          ln <- ln$value
-	          if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	          if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	          if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
-	        }
+	    if (!is.null(sn$hasatt)){
+	      if (sn$hasatt){
+	        sn <- sn$value
+	        if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	        if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	        if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
+	      } else {
+	          if (ln$hasatt){
+	            ln <- ln$value
+	            if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
+	            if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
+	            if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
+	          }
+	       }
 	    }
     }
 
@@ -139,17 +140,20 @@ function(var,infile,outfile,nc34=3){
   mul <- year*mon
   dummy_vec <- c(1:length(mon))
 
-  seas <- array(NA,dim=c(4,3,length(yl)))
+  dummy_win <- NULL
+  dummy_spr <- NULL
+  dummy_sum <- NULL
+  dummy_aut <- NULL
 
   for (i in 1:length(yl)){
     win <- which(mon==1&year==yl[i]|mon==2&year==yl[i]|mon==12&year==(yl[i]-1))
-    if (length(win)==3){seas[1,,i]<-win}
+    if (length(win)>=3){dummy_win <- append(dummy_win,win)}
       spr <- which(mon==3&year==yl[i]|mon==4&year==yl[i]|mon==5&year==yl[i])
-    if (length(spr)==3){seas[2,,i]<-spr}
+    if (length(spr)>=3){dummy_spr <- append(dummy_spr,spr)}
       sum <- which(mon==6&year==yl[i]|mon==7&year==yl[i]|mon==8&year==yl[i])
-    if (length(sum)==3){seas[3,,i]<-sum}
+    if (length(sum)>=3){dummy_sum <- append(dummy_sum,sum)}
       aut <- which(mon==9&year==yl[i]|mon==10&year==yl[i]|mon==11&year==yl[i])
-    if (length(aut)==3){seas[4,,i]<-aut}
+    if (length(aut)>=3){dummy_aut <- append(dummy_aut,aut)}
   }
 
   target <- array(NA,dim=c(length(lon),length(lat),1))
@@ -206,33 +210,35 @@ function(var,infile,outfile,nc34=3){
   # get data and calculate multi-year seasonal minima
 
   id <- nc_open(infile)
-  limit <- (length(yl)*3)*0.25  # 75% of monthly data have to be available
-  count <- 1
+    count <- 1
     for (j in 1:4){
-      mon_dummy <- seas[j,,]
-	if (sum(is.na(mon_dummy))<=limit){
-	  dum_dat <- array(NA,dim=c(length(lon),length(lat),length(mon_dummy)))
-	   for (i in 1:length(mon_dummy)){
-	    if (!is.na(mon_dummy[i])){
-	      dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,mon_dummy[i]),count=c(-1,-1,1),collapse_degen=FALSE)
-	    }
-	   }
-	  cat("\r","apply multi-year seasonal minimum ",count," of 4",sep="")
-	  min_data <- do.call(pmin, c(na.rm=T,lapply(seq(1:dim(dum_dat)[3]), function(i) dum_dat[,,i])))
-	  min_data[is.na(min_data)] <- v_missing_value
-	  tdum <- min(time1[mon_dummy],na.rm=T)
-	  tbnds[1,1] <- min(time1[mon_dummy],na.rm=T)
-	  tbnds[2,1] <- max(time1[mon_dummy],na.rm=T)
-	  ncvar_put(ncnew,var1,min_data,start=c(1,1,count),count=c(-1,-1,1))
-	  ncvar_put(ncnew,t,tdum,start=count,count=1)
-	  ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
-	  count <- count+1
-	} else {cat("75% of monthly data have to be available - that's not the case","\n")}
-     }
+      if (j==1)(mon_dummy <- dummy_win)
+      if (j==2)(mon_dummy <- dummy_spr)
+      if (j==3)(mon_dummy <- dummy_sum)
+      if (j==4)(mon_dummy <- dummy_aut)
+	    if (sum(is.finite(mon_dummy))>=3){
+	      dum_dat <- array(NA,dim=c(length(lon),length(lat),length(mon_dummy)))
+	      for (i in 1:length(mon_dummy)){
+	        if (!is.na(mon_dummy[i])){
+	          dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,mon_dummy[i]),count=c(-1,-1,1),collapse_degen=FALSE)
+	        }
+	      }
+	      cat("\r","apply multi-year seasonal minimum ",count," of 4",sep="")
+	      min_data <- do.call(pmin, c(na.rm=T,lapply(seq(1:dim(dum_dat)[3]), function(i) dum_dat[,,i])))
+	      min_data[is.na(min_data)] <- v_missing_value
+	      tdum <- min(time1[mon_dummy],na.rm=T)
+	      tbnds[1,1] <- min(time1[mon_dummy],na.rm=T)
+	      tbnds[2,1] <- max(time1[mon_dummy],na.rm=T)
+	      ncvar_put(ncnew,var1,min_data,start=c(1,1,count),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,tdum,start=count,count=1)
+	      ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
+	      count <- count+1
+	    } else {cat("Not enough data to calculate a seasonal minimum!","\n")}
+    }
 
- nc_close(id)
+    nc_close(id)
 
- nc_close(ncnew)
+    nc_close(ncnew)
 
   end.time <- Sys.time()
   cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
