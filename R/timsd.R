@@ -93,15 +93,15 @@ function(var,infile,outfile,nc34=3){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get details of file
+    # get details of file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
@@ -137,6 +137,7 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
+    cmsaf_info <- (paste("cmsaf::timsd for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
 
     nb2 <- c(0,1)
@@ -158,6 +159,7 @@ function(var,infile,outfile,nc34=3){
 
     ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
     ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+    ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
     ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
     ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")

@@ -109,7 +109,7 @@ function(var,infile,outfile,nc34=3){
       # get area weights with raster package
 
       grid <- raster(nrows=length(lon),ncols=length(lat),xmn=min(lon),xmx=max(lon),ymn=min(lat),ymx=max(lat))
-      area <- area(grid)
+      area <- area(grid,weights=T)
       weights <- as.matrix(area)
 
       lon <- 0

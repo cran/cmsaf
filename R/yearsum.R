@@ -151,6 +151,7 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
+    cmsaf_info <- (paste("cmsaf::yearsum for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
 
     nb2 <- c(0,1)
@@ -172,6 +173,7 @@ function(var,infile,outfile,nc34=3){
 
     ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
     ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+    ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
     ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
     ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -187,7 +189,7 @@ function(var,infile,outfile,nc34=3){
 
     ncatt_put(ncnew,0,"Info",info,prec="text")
 
-  # calculate monthly means
+  # calculate annual means
 
   count <- 1
   for (i in 1:length(yl)){

@@ -1,5 +1,5 @@
 trend <-
-function(var,infile,outfile,nc34=3){
+function(var,infile,outfile,option=1,nc34=3){
 
   start.time <- Sys.time()
 
@@ -28,6 +28,31 @@ function(var,infile,outfile,nc34=3){
     c(slope,lo_conf,up_conf)
   }
   
+  simplelm2 <- function (y) {
+    x <- c(1:length(y))
+    dummy <- !is.na(y)
+    x <- x[dummy]
+    y <- y[dummy]
+    ## number of data
+    n <- length(x)
+    ## centring
+    y0 <- sum(y) / length(y); yc <- y - y0
+    x0 <- sum(x) / length(x); xc <- x - x0
+    ## fitting an intercept-free model: yc ~ xc + 0
+    xty <- c(crossprod(xc, yc))
+    xtx <- c(crossprod(xc))
+    slope <- xty / xtx
+    rc <- yc - xc * slope
+    ## Pearson estimate of residual standard error
+    sigma2 <- c(crossprod(rc)) / (n - 2)
+    ## standard error for slope
+    slope_se <- sqrt(sigma2 / xtx)
+    ## confidence interval
+    lo_conf <- slope - (1.959964 * slope_se)
+    up_conf <- slope + (1.959964 * slope_se)
+    ## return estimation summary for slope and confidence interval
+    c(slope,lo_conf,up_conf)
+  }
 
 # check filename
 
@@ -130,12 +155,12 @@ function(var,infile,outfile,nc34=3){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get details of file
+    # get details of file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
 
    }else{
       nc_close(id)
@@ -143,16 +168,18 @@ function(var,infile,outfile,nc34=3){
 
      # calculate field maximum 
 	
-	 maxval <- array(NA,dim=c(3))
+	 maxval <- array(NA,dim=c(5))
 	 if (time_len>=3){
-	   samp <- sample(c(1:time_len),3)
+	   samp <- sample(c(1:time_len),5)
 	 } else {
 	   samp <- 1
 	 }
 	 count <- 1
 	 for (i in samp){
 	   data1 <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
-	   maxval[count] <- max(data1,na.rm=T)
+	   if (sum(!is.na(data1))>0){
+	     maxval[count] <- max(data1,na.rm=T)
+	   }
 	   count <- count+1
 	 }
  	
@@ -174,39 +201,57 @@ function(var,infile,outfile,nc34=3){
     target <- array(NA,dim=c(length(lon),length(lat),1))
     target2 <- array(NA,dim=c(length(lon),length(lat),1))
     target_p <- array(NA,dim=c(length(lon),length(lat),1))
-    x <- c(1:time_len)
     cat("fit with linear model...",sep="", "\n")
+    
+    if (option==2){
+    
+      x <- c(1:time_len)
 
-    for (i in 1:length(lon)){
-	    prog <- round((100/length(lon))*i)
-	    cat("\r","progress: ",prog,"%",sep="")
-	    for (j in 1:length(lat)){
-	      dum_dat <- ncvar_get(id,var,start=c(i,j,1),count=c(1,1,-1))
-	      if (time_len-(sum(is.na(dum_dat)))>=2){
-	        dummy <- which(is.finite(dum_dat))
-	        fit <- simplelm(x[dummy],dum_dat[dummy])
-	        val <- fit[1]*time_len
-	        val2 <- fit[1]
-	        sig <- 0
-	        if (fit[2]*fit[3]<0)(sig <- 0)
-	        if (fit[2]<0&fit[3]<0)(sig <- -1)
-	        if (fit[2]>0&fit[3]>0)(sig <- 1)
-	      } else {
-	        val <- NA
-	        val2 <- NA
-	        sig <- NA
+      for (i in 1:length(lon)){
+	      prog <- round((100/length(lon))*i)
+	      cat("\r","progress: ",prog,"%",sep="")
+	      for (j in 1:length(lat)){
+	        dum_dat <- ncvar_get(id,var,start=c(i,j,1),count=c(1,1,-1))
+	        if (time_len-(sum(is.na(dum_dat)))>=2){
+	          dummy <- which(is.finite(dum_dat))
+	          fit <- simplelm(x[dummy],dum_dat[dummy])
+	          val <- fit[1]*time_len
+	          val2 <- fit[1]
+	          sig <- 0
+	          if (!is.na(fit[2])&!is.na(fit[3])){
+	            if (fit[2]*fit[3]<0)(sig <- 0)
+	            if (fit[2]<0&fit[3]<0)(sig <- -1)
+	            if (fit[2]>0&fit[3]>0)(sig <- 1)
+	          } else {
+	            sig <- NA
+	          }
+	        } else {
+	          val <- NA
+	          val2 <- NA
+	          sig <- NA
+	        }
+	      target[i,j,1] <- val
+	      target2[i,j,1] <- val2
+	      target_p[i,j,1] <- sig
 	      }
-	    target[i,j,1] <- val
-	    target2[i,j,1] <- val2
-	    target_p[i,j,1] <- sig
-	    }
+      }
+      cat("\n")
+    } else {
+      dum_dat <- ncvar_get(id,var)
+      target  <- apply(dum_dat,c(1,2),simplelm2)
+      target_p[which((target[2,,]*target[3,,])<0)] <- 0
+      target_p[which(target[2,,]<0&target[3,,]<0)] <- -1
+      target_p[which(target[2,,]>0&target[3,,]>0)] <- 1
+
+      target2  <- target[1,,]
+      target   <- target2*time_len
     }
 
    nc_close(id)
 
  # create netcdf
 
-  cat("\n","create netcdf",sep="","\n")
+  cat("create netcdf",sep="","\n")
 
   # NetCDF format 3 or 4
   
@@ -218,6 +263,7 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
+    cmsaf_info <- (paste("cmsaf::trend for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
     target2[is.na(target2)] <- v_missing_value
     target_p[is.na(target)] <- v_missing_value
@@ -258,9 +304,11 @@ function(var,infile,outfile,nc34=3){
 
       ncatt_put(ncnew,var_1,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var_1,"long_name",long_name_1,prec="text")
+      ncatt_put(ncnew,var_1,"cmsaf_info",cmsaf_info,prec="text")
       
       ncatt_put(ncnew,var_2,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var_2,"long_name",long_name_2,prec="text")
+      ncatt_put(ncnew,var_2,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,s_name,"standard_name",s_standard_name,prec="text")
       ncatt_put(ncnew,s_name,"long_name",s_long_name,prec="text")

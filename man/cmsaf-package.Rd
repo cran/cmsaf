@@ -3,19 +3,18 @@
 \alias{cmsaf}
 \docType{package}
 \title{cmsaf}
-\description{The cmsaf-package contains a small collection of functions
+\description{The 'cmsaf' package contains a small collection of functions
 for basic analysis and manipulation of CM SAF NetCDF formatted data. 
-The operation and functions are inspired by the Climate Data Operatores ('cdo').
 }
 \details{
 \tabular{ll}{
 Package: \tab cmsaf\cr
 Type: \tab Package\cr
-Version: \tab 1.8.1\cr
-Date: \tab 2017-07-10\cr
+Version: \tab 1.9.0\cr
+Date: \tab 2018-02-06\cr
 License: \tab GPL (>= 3)\cr
 }
-The cmsaf-functions are manipulating NetCDF input files and write the result 
+The 'cmsaf' functions are manipulating NetCDF input files and write the result 
 in a separate output file. The functions were designed and tested for CM SAF
 NetCDF data, but most of the funtions can be applied for other NetCDF data,
 which use the CF convention and a rectangular lon-lat grid. As interface to

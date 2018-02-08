@@ -1,44 +1,25 @@
-\name{box_mergetime}
-\alias{box_mergetime}
+\name{cmsaf.cat}
+\alias{cmsaf.cat}
 \title{
-Function to combine NetCDF files and simultaneously cut a region.
+Concatenate datasets of several NetCDF input files.
 }
 \description{
-This function selects a region from a bunch of CM SAF NetCDF files that 
-match the same pattern of the filename, and writes the output to a new file.
-If no longitude and latitude values are given, files are only merged. All
-input files have to have the same rectangular grid and the same variable.
-The reference time of the output file is determined by the first input file. 
+This function concatenates datasets of an arbitrary number of input files.
+All input files have to have the same structure with the same variable
+and different timesteps.
 }
 \usage{
-box_mergetime(var, path, pattern, outfile, 
-   lon1, lon2, lat1, lat2, nc34)
+cmsaf.cat(var, infiles, outfile, nc34)
 }
 \arguments{
   \item{var}{
 Name of NetCDF variable (character). 
 }
-  \item{path}{
-The directory of input NetCDF files without / at the end (character).
-}
-  \item{pattern}{
-A part of the filename, which is the same for all desired input files (character).
-The pattern has to be a character string containing a regular expression.
+  \item{infiles}{
+Vector with filenames of input NetCDF files. The file names may include the directory (character).
 }
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
-}
-  \item{lon1}{
-Longitude of lower left corner (numeric).
-}
-  \item{lon2}{
-Longitude of upper right corner (numeric).
-}
-  \item{lat1}{
-Latitude of lower left corner (numeric).
-}
-  \item{lat2}{
-Latitude of upper right corner (numeric).
 }
   \item{nc34}{
 NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
@@ -46,7 +27,7 @@ Default output is NetCDFv3.
 }
 }
 \value{
-A NetCDF file including the merged timeseries of the selected region is written.
+A NetCDF file including the merged timeseries is written.
 The resulting file uses the meta data of the first input file.
 }
 \author{
@@ -94,6 +75,6 @@ library(ncdf4)
 ## Cut a region and merge both example CM SAF NetCDF files into one output file.
 ## Get path information of working directory with getwd() command.
    wd <- getwd()
-   box_mergetime('SIS',wd,'CMSAF_example_file_n', 
-   'CMSAF_example_file_box_mergetime.nc',8,12,48,52)
+   cmsaf.cat('SIS',c('CMSAF_example_file_n1.nc','CMSAF_example_file_n2.nc'), 
+   'CMSAF_example_file_cmsaf.cat.nc')
 }

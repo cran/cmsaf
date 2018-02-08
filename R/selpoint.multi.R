@@ -151,7 +151,7 @@ if (case!=0){
 	  lon_limit <- which(lon>=(lon1[n]-dlon)&lon<=(lon1[n]+dlon))  
 	  lat_limit <- which(lat>=(lat1[n]-dlat)&lat<=(lat1[n]+dlat)) 
 
-    if (any(lon_limit)&any(lat_limit)){
+    if (exists("lon_limit")&exists("lat_limit")){
   
 	  lon2 <- lon[lon_limit]
 	  lat2 <- lat[lat_limit]
@@ -173,7 +173,7 @@ if (case!=0){
 	  lat_limit <- which(lat==lat2[dumj])
     }
 
-    if (any(lon_limit)&any(lat_limit)){
+    if (exists("lon_limit")&exists("lat_limit")){
 
 	  target_lon <- append(target_lon,lon[lon_limit])
 	  target_lat <- append(target_lat,lat[lat_limit])
@@ -190,10 +190,16 @@ if (case!=0){
       v__FillValue = v_missing_value}
     if (v_missing_value == "undefined"){ 
       v_missing_value = v__FillValue}
+	
+	  tbnds <- NULL   
+	  if ("time_bnds" %in% varnames){
+      tbnds1 <- ncvar_get(id,"time_bnds")
+      tbnds <- rbind(tbnds,tbnds1)
+    }
 
     nc_close(id)
 
-  if (any(target_data)){
+  if (!is.null(target_data)){
     if (length(time1)==1){
       dummy <- array(NA,dim=c(1,1,1))
       dummy[1,1,1] <- target_data[1,]
@@ -249,7 +255,7 @@ if (case!=0){
   fdim <- length(filelist)
 
   file=filelist[1]
-  file <- paste(path,"/",file,sep="")
+  file <- file.path(path,file)
   id <- nc_open(file)
 
   # get information about dimensions
@@ -331,7 +337,7 @@ if (case!=0){
 	    lon_limit <- which(lon>=(lon1[n]-dlon)&lon<=(lon1[n]+dlon))  
 	    lat_limit <- which(lat>=(lat1[n]-dlat)&lat<=(lat1[n]+dlat)) 
 
-      if (any(lon_limit)&any(lat_limit)){
+      if (exists("lon_limit")&exists("lat_limit")){
   
 	      lon2 <- lon[lon_limit]
 	      lat2 <- lat[lat_limit]
@@ -353,7 +359,7 @@ if (case!=0){
 	      lat_limit <- which(lat==lat2[dumj])
       }
 
-      if (any(lon_limit)&any(lat_limit)){
+      if (exists("lon_limit")&exists("lat_limit")){
 
 	    target_lon <- append(target_lon,lon[lon_limit])
 	    target_lat <- append(target_lat,lat[lat_limit])
@@ -425,8 +431,8 @@ if (case!=0){
   
 # file output  
 
-  if (any(target_data)){
-    
+  if (!is.null(target_data)){
+    if (is.null(dim(target_data)[1]))(target_data <- array(target_data,dim=c(1,length(target_data))))
     for (i in 1:dim(target_data)[1]){
     
       if (format=="nc"){
@@ -471,6 +477,7 @@ if (case!=0){
       lon <- target_lon[i]
       lat <- target_lat[i]
       data1[is.na(data1)] <- v_missing_value
+      cmsaf_info <- (paste("cmsaf::selpoint.multi for variable ",var,sep=""))
 
       x <- ncdim_def(name="lon",units=lon_units,vals=lon)
       y <- ncdim_def(name="lat",units=lat_units,vals=lat)
@@ -493,6 +500,7 @@ if (case!=0){
 
         ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
         ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+        ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
         ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
         ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -516,6 +524,7 @@ if (case!=0){
 
         ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
         ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+        ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
         ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
         ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")

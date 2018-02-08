@@ -1,22 +1,14 @@
-fldmean <-
-function(var,infile,outfile,nc34=3){
+cmsaf.cat <-
+function(var,infiles,outfile,nc34=3){
 
   start.time <- Sys.time()
-
-# check filename
-
-  filecheck <- checkfile(infile,outfile)
-
-  if (filecheck[[1]]){
-    infile <- filecheck[[2]]
-    outfile <- filecheck[[3]]    
 
 # define standard names of variables and dimensions
 
    t_name <- "time"
    t_standard_name = "time"
    t_units = "undefined"
-   t_calendar = "undefined"
+   t_calendar = "standard"
 
    nb2_units = "1"
 
@@ -48,10 +40,15 @@ function(var,infile,outfile,nc34=3){
 
   cat("get file information", "\n")
 
-  id <- nc_open(infile)
+  filelist <- infiles
+  filelist <- sort(filelist)
+  fdim <- length(filelist)
+
+  file=filelist[1]
+  id <- nc_open(file)
 
   # get information about dimensions
-
+  
   dimnames <- names(id$dim)
 
  # check standard_names of dimensions
@@ -88,7 +85,26 @@ function(var,infile,outfile,nc34=3){
   # get information about variables
 	
   varnames <- names(id$var)
-
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(var) %in% toupper(var_default)){
+    var <- var_default[which(toupper(var)==toupper(var_default))]
+  } else {
+      cat("Variable ",var," not found.",sep="","\n")
+      var <- var_default[1]
+      cat("Variable ",var," will be used.",sep="","\n")
+    }
+  
+    # set variable precision 
+    varind   <- which(varnames==var)
+    varprec  <- NULL
+    varprec  <- id$var[[varind]]$prec
+    if (!is.null(varprec)){
+      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
+        (var_prec <- varprec)
+      }
+    }
+    
    if (var %in% varnames){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
@@ -96,30 +112,21 @@ function(var,infile,outfile,nc34=3){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-    # set dimensions
+    # get data of first file and cut desired region
 
-	  lon <- 0
-	  lat <- 0
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
 	  time1 <- ncvar_get(id,t_name)
 	  time_len <- length(time1)
-	  if ("time_bnds" %in% varnames){
-	    tbnds1 <- ncvar_get(id,"time_bnds")
-	  }
+	if ("time_bnds" %in% varnames){
+	  tbnds1 <- ncvar_get(id,"time_bnds")
+	}
 
-    # calculate field mean
-
-	  target <- array(NA,dim=c(time_len))
-	  for (i in 1:time_len){
-	    data1 <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
-	    if (sum(!is.na(data1))>0){
-	      target[i] <- mean(data1,na.rm=T)
-	    } else {
-	      target[i] <- NA
-	    }
-	  }
-   }else{
-      nc_close(id)
-      stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
+	target <- ncvar_get(id,var,collapse_degen=FALSE)
+	
+  } else {
+     nc_close(id)
+     stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
 
   if (v__FillValue == "undefined"){ 
     v__FillValue = v_missing_value}
@@ -128,10 +135,30 @@ function(var,infile,outfile,nc34=3){
 
   nc_close(id)
 
+# store data in target field
+
+   if ("time_bnds" %in% varnames){
+    time_bnds <- array(NA,dim=c(2,length(time1)))
+    time_bnds[,1:length(time1)] <- tbnds1
+   } 
+
+# get time reference
+
+  dt_ref <- get_time(t_units,0)
+  unit_ref <- unlist(strsplit(t_units,split=" "))[1]
+
+  # check reference time unit
+  if (unit_ref=="minutes"|unit_ref=="Minutes"|unit_ref=="Mins"|unit_ref=="Min"|unit_ref=="min")(unit_ref <- "mins")
+  if (unit_ref=="seconds"|unit_ref=="Seconds"|unit_ref=="Secs"|unit_ref=="Sec"|unit_ref=="sec")(unit_ref <- "secs")
+  if (unit_ref=="Hours"|unit_ref=="Hour"|unit_ref=="hour")(unit_ref <- "hours")
+  if (unit_ref=="Days"|unit_ref=="Day"|unit_ref=="day")(unit_ref <- "days")
+  if (unit_ref=="Months"|unit_ref=="Month"|unit_ref=="month")(unit_ref <- "months")
+  if (unit_ref!="mins"&unit_ref!="secs"&unit_ref!="hours"&unit_ref!="days"&unit_ref!="weeks"&unit_ref!="months")(unit_ref <- "auto")
+
 # create netcdf
 
   cat("create netcdf", "\n")
-  
+
   # NetCDF format 3 or 4
   
   if (nc34==4){
@@ -142,13 +169,7 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
-    if (length(time1)==1){
-      dummy <- array(NA,dim=c(1,1,1))
-      dummy[1,1,1] <- target
-      target <- dummy
-    }
-
-    cmsaf_info <- (paste("cmsaf::fldmean for variable ",var,sep=""))
+    cmsaf_info <- (paste("cmsaf::cmsaf.cat for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
     nb2 <- c(0,1)
 
@@ -156,7 +177,7 @@ function(var,infile,outfile,nc34=3){
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
     t <- ncdim_def(name="time",units=t_units,vals=time1,unlim=TRUE)
     if ("time_bnds" %in% varnames){
-      tb <- ncdim_def(name="nb2",units=nb2_units,vals=nb2)
+      tb <- ncdim_def(name="nb2",units="1",vals=nb2)
     }
 
     var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),missval=v_missing_value,
@@ -168,7 +189,7 @@ function(var,infile,outfile,nc34=3){
       ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
       ncvar_put(ncnew,var1,target)
-      ncvar_put(ncnew,var2,tbnds1)
+      ncvar_put(ncnew,var2,time_bnds)
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
@@ -187,7 +208,7 @@ function(var,infile,outfile,nc34=3){
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
-      
+
     } else {
       vars <- list(var1)
       ncnew <- nc_create(outfile,vars,force_v4=nc_format)
@@ -210,12 +231,84 @@ function(var,infile,outfile,nc34=3){
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
-      
     }
+    
+  # check timestep sorting
+  
+  time_sorting <- time1  
+      
+  if (fdim>=2){
+    for (i in 2:fdim){
+      cat("\r","checking file order ",i," of ",fdim,sep="")
+      file=filelist[i]
+      id <- nc_open(file)
+        dum_time <- as.numeric(ncvar_get(id,t_name))
+      nc_close(id)
+      time_sorting <- append(time_sorting,dum_time)
+    }
+        
+    filelist <- filelist[order(time_sorting)]
+    cat("\n","               ")
+  }
+    
+  # get data and cut desired region  
 
-    nc_close(ncnew)
+  time_len <- length(time1)
+
+  if (fdim>=2){
+    for (i in 2:fdim){
+      cat("\r","loading file ",i," of ",fdim,sep="")
+      file=filelist[i]
+      id <- nc_open(file)
+
+      dum_dat <- ncvar_get(id,var,collapse_degen=FALSE)
+      dum_time <- as.numeric(ncvar_get(id,t_name))
+      time_len <- time_len+length(dum_time)
+
+      dum_t_units <- ncatt_get(id,t_name,"units")$value
+      dt_dum <- get_time(dum_t_units,dum_time)
+      
+      if (as.character(dt_ref)=="-4712-01-01 12:00:00"){
+        dum_time <- (as.numeric(dt_dum)/86400)+2440587.5
+      } else {
+        if (unit_ref=="months"){
+          dum_time <- round((difftime(dt_dum,dt_ref,units=c("days")))/30.4375)
+          dum_time <- as.numeric(dum_time)
+        } else {
+          dum_time <- difftime(dt_dum,dt_ref,units=c(unit_ref))
+        }
+      }
+
+      if ("time_bnds" %in% varnames){
+	      dum_tb <- ncvar_get(id,"time_bnds")
+      }
+
+      nc_close(id)
+
+      dum_dat[is.na(dum_dat)] <- v_missing_value
+      startt2 <- time_len-length(dum_time)+1
+      countt2 <- length(dum_time)
+
+      if ("time_bnds" %in% varnames){
+
+        ncvar_put(ncnew,var1,dum_dat,start=c(1,1,startt2),count=c(-1,-1,countt2))
+        ncvar_put(ncnew,var2,dum_tb,start=c(1,startt2),count=c(-1,countt2))
+        ncvar_put(ncnew,t,dum_time, start=startt2, count=countt2 )
+        nc_sync(ncnew)
+
+      } else {
+
+        ncvar_put(ncnew,var1,dum_dat,start=c(1,1,startt2),count=c(-1,-1,countt2))
+        ncvar_put(ncnew,t,dum_time, start=startt2, count=countt2 )
+        nc_sync(ncnew)
+      }
+    }
+  } else if (fdim==1) {
+    cat("Just one file is used. This makes no sense.")
+  }
+  
+  nc_close(ncnew)
 
 end.time <- Sys.time()
-cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s", sep="","\n")
-  } # endif filecheck
+cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
 }

@@ -86,6 +86,15 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc34=3){
   # get information about variables
 	
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(var) %in% toupper(var_default)){
+    var <- var_default[which(toupper(var)==toupper(var_default))]
+  } else {
+      cat("Variable ",var," not found.",sep="","\n")
+      var <- var_default[1]
+      cat("Variable ",var," will be used.",sep="","\n")
+    }
   
     # set variable precision 
     varind   <- which(varnames==var)
@@ -180,6 +189,7 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc34=3){
     compression = NA
   }
 
+    cmsaf_info <- (paste("cmsaf::box_mergetime for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
     nb2 <- c(0,1)
 
@@ -203,6 +213,7 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -226,6 +237,7 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -239,13 +251,13 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc34=3){
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
-
     }
     
   # check timestep sorting
-    
+  
+  time_sorting <- time1  
+      
   if (fdim>=2){
-    time_sorting <- time1
     for (i in 2:fdim){
       cat("\r","checking file order ",i," of ",fdim,sep="")
       file=filelist[i]
@@ -255,10 +267,10 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc34=3){
       nc_close(id)
       time_sorting <- append(time_sorting,dum_time)
     }
+        
+    filelist <- filelist[order(time_sorting)]
+    cat("\n","               ")
   }
-    
-  filelist <- filelist[order(time_sorting)]
-  cat("\n","               ")
     
   # get data and cut desired region  
 
@@ -291,7 +303,6 @@ function(var,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc34=3){
 
       if ("time_bnds" %in% varnames){
 	      dum_tb <- ncvar_get(id,"time_bnds")
-	      dum_tb <- dum_tb + dum_time
       }
 
       nc_close(id)

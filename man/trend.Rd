@@ -5,11 +5,16 @@ Determine linear trends.
 }
 \description{
 The function determines the trend from data of a single CM SAF NetCDF input 
-file basing on a linear model. Depending on the file size, this function 
-could be very time consuming.
+file basing on a simple linear model. Depending on the file size, this function 
+could be very time consuming, thus there are two available options. 
+Option 1 (default) is using an apply approach and will read the whole data in
+once. This option is quite fast, but requires enough memory. 
+Option 2 is using the same calculation, but reads the data pixel by pixel,
+which is very slow, but can also be applied for large data files, which would
+not fit into the memory at once.
 }
 \usage{
-trend(var, infile, outfile, nc34)
+trend(var, infile, outfile, option, nc34)
 }
 \arguments{
   \item{var}{
@@ -21,6 +26,10 @@ The file should include a time series of 2D fields to work in the desired way.
 }
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
+}
+  \item{option}{
+The way of data handling. Option = 1 is fast but memory consuming (default).
+Option = 2 is slow, but needs much less memory. Input is either 1 or 2 (numeric).
 }
   \item{nc34}{
 NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
@@ -71,5 +80,5 @@ library(ncdf4)
 
 ## Determine the trend of the example CM SAF NetCDF file and write the 
 ## output to a new file.
-   trend('SIS','CMSAF_example_file.nc', 'CMSAF_example_file_trend.nc')
+   trend('SIS','CMSAF_example_file.nc','CMSAF_example_file_trend.nc')
 }

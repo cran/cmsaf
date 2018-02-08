@@ -106,23 +106,27 @@ function(var,infile,outfile,nc34=3){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # set dimensions
+    # set dimensions
 
-	lon <- 0
-	lat <- 0
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
-	if ("time_bnds" %in% varnames){
-	  tbnds1 <- ncvar_get(id,"time_bnds")
-	}
+	  lon <- 0
+	  lat <- 0
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
+	  if ("time_bnds" %in% varnames){
+	    tbnds1 <- ncvar_get(id,"time_bnds")
+	  }
 
-      # calculate field maximum 
+    # calculate field maximum 
 
-	target <- array(NA,dim=c(time_len))
-	for (i in 1:time_len){
-	  data1 <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
-	  target[i] <- max(data1,na.rm=T)
-	}
+	  target <- array(NA,dim=c(time_len))
+	  for (i in 1:time_len){
+	    data1 <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
+	    if (sum(!is.na(data1))>0){
+	      target[i] <- max(data1,na.rm=T)
+	    } else {
+	      target[i] <- NA
+	    }
+	  }
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
@@ -149,11 +153,12 @@ function(var,infile,outfile,nc34=3){
   }
 
     if (length(time1)==1){
-      dummy <- array(NA,dim=c(dim(target)[1],dim(target)[2],1))
-      dummy[,,1] <- target
+      dummy <- array(NA,dim=c(1,1,1))
+      dummy[1,1,1] <- target
       target <- dummy
     }
 
+    cmsaf_info <- (paste("cmsaf::fldmax for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
     nb2 <- c(0,1)
 
@@ -177,6 +182,7 @@ function(var,infile,outfile,nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -200,6 +206,7 @@ function(var,infile,outfile,nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")

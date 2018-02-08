@@ -96,12 +96,12 @@ function(var,month=c(1),infile,outfile,nc34=3){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get details of file
+    # get details of file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
@@ -137,7 +137,8 @@ function(var,month=c(1),infile,outfile,nc34=3){
   for (i in 1:length(yl)){
     for (j in 1:length(month)){
     	dum <- which(mon==month[j]&year==yl[i])
-	seas[j,i] <- dum
+    	if (length(dum)==0)(dum <- NA)
+	    seas[j,i] <- dum
     }
   }
 
@@ -158,6 +159,7 @@ function(var,month=c(1),infile,outfile,nc34=3){
     compression = NA
   }
 
+    cmsaf_info <- (paste("cmsaf::multimonsum of month(s): ",month," for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
     nb2 <- c(0,1)
 
@@ -177,6 +179,7 @@ function(var,month=c(1),infile,outfile,nc34=3){
 
     ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
     ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+    ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
     ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
     ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -201,18 +204,18 @@ function(var,month=c(1),infile,outfile,nc34=3){
     mon_dummy <- seas[,i]
     if (sum(is.na(mon_dummy))==0){
       for (j in 1:length(month)){
-	  dum_dat[,,j] <- ncvar_get(id,var,start=c(1,1,mon_dummy[j]),count=c(-1,-1,1),collapse_degen=FALSE)
+	      dum_dat[,,j] <- ncvar_get(id,var,start=c(1,1,mon_dummy[j]),count=c(-1,-1,1),collapse_degen=FALSE)
       }
-	  cat("\r","apply multi monthly sum ",count," of ",(length(yl)),sep="")
-	  sum_data <- rowSums(dum_dat,dims=2,na.rm=T)
-	  sum_data[is.na(sum_data)] <- v_missing_value
-	  tdum <- min(time1[mon_dummy])
-	  tbnds[1,1] <- min(time1[mon_dummy])
-	  tbnds[2,1] <- max(time1[mon_dummy])
-	  ncvar_put(ncnew,var1,sum_data,start=c(1,1,count),count=c(-1,-1,1))
-	  ncvar_put(ncnew,t,tdum,start=count,count=1)
-	  ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
-	  count <- count+1
+	    cat("\r","apply multi monthly sum ",count," of ",(length(yl)),sep="")
+	    sum_data <- rowSums(dum_dat,dims=2,na.rm=T)*ifelse(rowSums(is.na(dum_dat),dims=2) == dim(dum_dat)[3], NA, 1)
+	    sum_data[is.na(sum_data)] <- v_missing_value
+	    tdum <- min(time1[mon_dummy])
+	    tbnds[1,1] <- min(time1[mon_dummy])
+	    tbnds[2,1] <- max(time1[mon_dummy])
+	    ncvar_put(ncnew,var1,sum_data,start=c(1,1,count),count=c(-1,-1,1))
+	    ncvar_put(ncnew,t,tdum,start=count,count=1)
+	    ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
+	    count <- count+1
      }
    }
  nc_close(id)

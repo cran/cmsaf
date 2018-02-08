@@ -1,5 +1,5 @@
-fldmean <-
-function(var,infile,outfile,nc34=3){
+timpctl <-
+function(var,p=.95,infile,outfile,nc34=3){
 
   start.time <- Sys.time()
 
@@ -9,7 +9,7 @@ function(var,infile,outfile,nc34=3){
 
   if (filecheck[[1]]){
     infile <- filecheck[[2]]
-    outfile <- filecheck[[3]]    
+    outfile <- filecheck[[3]]
 
 # define standard names of variables and dimensions
 
@@ -96,27 +96,12 @@ function(var,infile,outfile,nc34=3){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-    # set dimensions
+    # get details of file
 
-	  lon <- 0
-	  lat <- 0
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
 	  time1 <- ncvar_get(id,t_name)
 	  time_len <- length(time1)
-	  if ("time_bnds" %in% varnames){
-	    tbnds1 <- ncvar_get(id,"time_bnds")
-	  }
-
-    # calculate field mean
-
-	  target <- array(NA,dim=c(time_len))
-	  for (i in 1:time_len){
-	    data1 <- ncvar_get(id,var,start=c(1,1,i),count=c(-1,-1,1))
-	    if (sum(!is.na(data1))>0){
-	      target[i] <- mean(data1,na.rm=T)
-	    } else {
-	      target[i] <- NA
-	    }
-	  }
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
@@ -126,12 +111,29 @@ function(var,infile,outfile,nc34=3){
   if (v_missing_value == "undefined"){ 
     v_missing_value = v__FillValue}
 
-  nc_close(id)
+  # determine percentile over all timesteps 
+  
+   if (length(p)>1)(p <- p[1])
+  
+   if (p<0|p>1){
+     cat("Your given p-value is outside [0,1]. The default will be used (0.95).","\n")
+     p <- 0.95
+   }
+  
+   dum_dat <- ncvar_get(id,var,collapse_degen=FALSE)
+   cat(paste("get ",p*100,"% percentile",sep=""), "\n")
+   target <- apply(dum_dat,c(1,2),quantile,probs=p,names=FALSE,na.rm=TRUE)
+	 target[is.na(target)] <- v_missing_value
+   nc_close(id)
 
 # create netcdf
 
+  time_bnds <- array(NA, dim=c(2,1))
+  time_bnds[1,1] <- min(time1)
+  time_bnds[2,1] <- max(time1)
+
   cat("create netcdf", "\n")
-  
+
   # NetCDF format 3 or 4
   
   if (nc34==4){
@@ -142,80 +144,47 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
-    if (length(time1)==1){
-      dummy <- array(NA,dim=c(1,1,1))
-      dummy[1,1,1] <- target
-      target <- dummy
-    }
-
-    cmsaf_info <- (paste("cmsaf::fldmean for variable ",var,sep=""))
+    cmsaf_info <- (paste("cmsaf::timpctl wth p = ",p," for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
+
     nb2 <- c(0,1)
+    times <- time_bnds[1,]
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
-    t <- ncdim_def(name="time",units=t_units,vals=time1,unlim=TRUE)
-    if ("time_bnds" %in% varnames){
-      tb <- ncdim_def(name="nb2",units=nb2_units,vals=nb2)
-    }
+    t <- ncdim_def(name="time",units=t_units,vals=times,unlim=TRUE)
+    tb <- ncdim_def(name="nb2",units="1",vals=nb2)
 
     var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),missval=v_missing_value,
                       prec=var_prec,compression=compression)
+    var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
+    vars <- list(var1,var2)
+    ncnew <- nc_create(outfile,vars,force_v4=nc_format)
 
-    if ("time_bnds" %in% varnames){
-      var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
-      vars <- list(var1,var2)
-      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
+    ncvar_put(ncnew,var1,target)
+    ncvar_put(ncnew,var2,time_bnds)
 
-      ncvar_put(ncnew,var1,target)
-      ncvar_put(ncnew,var2,tbnds1)
+    ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
+    ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+    ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
-      ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
-      ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
+    ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
+    ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
+    ncatt_put(ncnew,"time","bounds","time_bnds",prec="text")
 
-      ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
-      ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
-      ncatt_put(ncnew,"time","bounds","time_bnds",prec="text")
+    ncatt_put(ncnew,"lon","standard_name",lon_standard_name,prec="text")
+    ncatt_put(ncnew,"lon","long_name",lon_long_name,prec="text")
+    ncatt_put(ncnew,"lon","axis",lon_axis,prec="text")
 
-      ncatt_put(ncnew,"lon","standard_name",lon_standard_name,prec="text")
-      ncatt_put(ncnew,"lon","long_name",lon_long_name,prec="text")
-      ncatt_put(ncnew,"lon","axis",lon_axis,prec="text")
+    ncatt_put(ncnew,"lat","standard_name",lat_standard_name,prec="text")
+    ncatt_put(ncnew,"lat","long_name",lat_long_name,prec="text")
+    ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
-      ncatt_put(ncnew,"lat","standard_name",lat_standard_name,prec="text")
-      ncatt_put(ncnew,"lat","long_name",lat_long_name,prec="text")
-      ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
+    ncatt_put(ncnew,0,"Info",info,prec="text")
 
-      ncatt_put(ncnew,0,"Info",info,prec="text")
-      
-    } else {
-      vars <- list(var1)
-      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
+  nc_close(ncnew)
 
-      ncvar_put(ncnew,var1,target)
-
-      ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
-      ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
-
-      ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
-      ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
-
-      ncatt_put(ncnew,"lon","standard_name",lon_standard_name,prec="text")
-      ncatt_put(ncnew,"lon","long_name",lon_long_name,prec="text")
-      ncatt_put(ncnew,"lon","axis",lon_axis,prec="text")
-
-      ncatt_put(ncnew,"lat","standard_name",lat_standard_name,prec="text")
-      ncatt_put(ncnew,"lat","long_name",lat_long_name,prec="text")
-      ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
-
-      ncatt_put(ncnew,0,"Info",info,prec="text")
-      
-    }
-
-    nc_close(ncnew)
-
-end.time <- Sys.time()
-cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s", sep="","\n")
+  end.time <- Sys.time()
+  cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
   } # endif filecheck
 }
