@@ -10,8 +10,8 @@ for basic analysis and manipulation of CM SAF NetCDF formatted data.
 \tabular{ll}{
 Package: \tab cmsaf\cr
 Type: \tab Package\cr
-Version: \tab 1.9.0\cr
-Date: \tab 2018-02-06\cr
+Version: \tab 1.9.1\cr
+Date: \tab 2018-04-16\cr
 License: \tab GPL (>= 3)\cr
 }
 The 'cmsaf' functions are manipulating NetCDF input files and write the result 

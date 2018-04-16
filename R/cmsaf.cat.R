@@ -30,7 +30,7 @@ function(var,infiles,outfile,nc34=3){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox." 
+   info = "Created with the CM SAF R Toolbox." 
    var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")

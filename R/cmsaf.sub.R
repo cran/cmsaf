@@ -38,7 +38,7 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox."
+   info = "Created with the CM SAF R Toolbox."
    var_prec="float"
 
    att_list <- c("standard_name","units","_FillValue","missing_value","calendar")
@@ -88,6 +88,15 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
   # get information about variables
 	
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(vari1) %in% toupper(var_default)){
+    vari1 <- var_default[which(toupper(vari1)==toupper(var_default))]
+  } else {
+      cat("Variable ",vari1," not found.",sep="","\n")
+      vari1 <- var_default[1]
+      cat("Variable ",vari1," will be used.",sep="","\n")
+    }
   
    # get variable precision 
     varind    <- which(varnames==vari1)
@@ -107,7 +116,7 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get data of first file
+    # get data of first file
 
 	  lon <- ncvar_get(id,lon_name)
 	  lat <- ncvar_get(id,lat_name)
@@ -158,6 +167,15 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
   # get information about variables
 	
   varnames2 <- names(id$var)
+  var_default <- subset(varnames2, !(varnames2 %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(vari2) %in% toupper(var_default)){
+    vari2 <- var_default[which(toupper(vari2)==toupper(var_default))]
+  } else {
+      cat("Variable ",vari2," not found.",sep="","\n")
+      vari2 <- var_default[1]
+      cat("Variable ",vari2," will be used.",sep="","\n")
+    }
   
    # get variable precision 
     varind    <- which(varnames2==vari2)

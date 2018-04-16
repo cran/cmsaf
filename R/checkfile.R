@@ -39,7 +39,17 @@ function(infile,outfile){
       } else {
         status <- as.logical("FALSE")
       }
+  }
+  
+  # check outfile extension
+  
+  if (is.character(outfile)){
+    ext <- unlist(strsplit(outfile,split="\\."))
+    ext <- ext[length(ext)]
+    if (ext!="nc"&ext!="csv"){
+      outfile <- paste(outfile,".nc",sep="")
     }
+  }
 
     status  <- status
     infile  <- infile

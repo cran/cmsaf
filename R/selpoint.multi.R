@@ -58,7 +58,7 @@ if (case!=0){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox." 
+   info = "Created with the CM SAF R Toolbox." 
    var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
@@ -108,6 +108,15 @@ if (case!=0){
   # get information about variables
 	
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(var) %in% toupper(var_default)){
+    var <- var_default[which(toupper(var)==toupper(var_default))]
+  } else {
+      cat("Variable ",var," not found.",sep="","\n")
+      var <- var_default[1]
+      cat("Variable ",var," will be used.",sep="","\n")
+    }
   
     # set variable precision 
     varind   <- which(varnames==var)
@@ -295,6 +304,15 @@ if (case!=0){
     # get information about variables
 	
     varnames <- names(id$var)
+    var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+    if (toupper(var) %in% toupper(var_default)){
+      var <- var_default[which(toupper(var)==toupper(var_default))]
+    } else {
+        cat("Variable ",var," not found.",sep="","\n")
+        var <- var_default[1]
+        cat("Variable ",var," will be used.",sep="","\n")
+      }
     
   if (var %in% varnames){
   
@@ -435,6 +453,9 @@ if (case!=0){
     if (is.null(dim(target_data)[1]))(target_data <- array(target_data,dim=c(1,length(target_data))))
     for (i in 1:dim(target_data)[1]){
     
+      if(toupper(format)=="CSV")(format <- "csv")
+      if(format!="csv")(format <- "nc")
+      
       if (format=="nc"){
 
       # create netcdf

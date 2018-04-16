@@ -38,7 +38,7 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox." 
+   info = "Created with the CM SAF R Toolbox." 
    var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
@@ -88,6 +88,15 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
   # get information about variables
 	
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(var) %in% toupper(var_default)){
+    var <- var_default[which(toupper(var)==toupper(var_default))]
+  } else {
+      cat("Variable ",var," not found.",sep="","\n")
+      var <- var_default[1]
+      cat("Variable ",var," will be used.",sep="","\n")
+    }
   
     # set variable precision 
     varind   <- which(varnames==var)
@@ -109,60 +118,60 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
 
-      # get data of first file
+    # get data of first file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
-	if ("time_bnds" %in% varnames){
-	  tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
-	}
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
+	  if ("time_bnds" %in% varnames){
+	    tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
+	  }
 	
-      # find closest point to target coordinates using sp package
+    # find closest point to target coordinates using sp package
 
-	cat("find closest point to target coordinates", "\n")
+	  cat("find closest point to target coordinates", "\n")
 	
-	dlon <- abs(lon[1]-lon[2])
-	dlat <- abs(lat[1]-lat[2])
+	  dlon <- abs(lon[1]-lon[2])
+	  dlat <- abs(lat[1]-lat[2])
 	
-	lon_limit <- which(lon>=(lon1-dlon)&lon<=(lon1+dlon))  
-	lat_limit <- which(lat>=(lat1-dlat)&lat<=(lat1+dlat)) 
+	  lon_limit <- which(lon>=(lon1-dlon)&lon<=(lon1+dlon))  
+	  lat_limit <- which(lat>=(lat1-dlat)&lat<=(lat1+dlat)) 
 
-      if (any(lon_limit)&any(lat_limit)){
+    if (any(lon_limit)&any(lat_limit)){
   
-	lon2 <- lon[lon_limit]
-	lat2 <- lat[lat_limit]
+	    lon2 <- lon[lon_limit]
+	    lat2 <- lat[lat_limit]
 
-	pos <- SpatialPoints(cbind(lon1,lat1), proj4string=CRS("+proj=longlat +datum=WGS84"))
-	dum_dist <- 1000
-	for (i in 1:length(lon2)){
-	  for (j in 1:length(lat2)){
-	    dist <- spDistsN1(pos, c(lon2[i],lat2[j]), longlat = FALSE)
-	      if (dist<=dum_dist){
-		      dum_dist <- dist
-		      dumi <- i
-		      dumj <- j
+	    pos <- SpatialPoints(cbind(lon1,lat1), proj4string=CRS("+proj=longlat +datum=WGS84"))
+	    dum_dist <- 1000
+	    for (i in 1:length(lon2)){
+	      for (j in 1:length(lat2)){
+	        dist <- spDistsN1(pos, c(lon2[i],lat2[j]), longlat = FALSE)
+	          if (dist<=dum_dist){
+		          dum_dist <- dist
+		          dumi <- i
+		          dumj <- j
+	          }
 	      }
 	    }
-	  }
 
-	lon_limit <- which(lon==lon2[dumi])  
-	lat_limit <- which(lat==lat2[dumj])
-      }
+	    lon_limit <- which(lon==lon2[dumi])  
+	    lat_limit <- which(lat==lat2[dumj])
+    }
 
    if (any(lon_limit)&any(lat_limit)){
 
-	lon <- lon[lon_limit]
-	lat <- lat[lat_limit]
+	  lon <- lon[lon_limit]
+	  lat <- lat[lat_limit]
 	
-	if (var %in% varnames){
-	  data1 <- ncvar_get(id,var,start=c(lon_limit,lat_limit,1),count=c(1,1,-1))}
+	  if (var %in% varnames){
+	    data1 <- ncvar_get(id,var,start=c(lon_limit,lat_limit,1),count=c(1,1,-1))}
 
-  if (v__FillValue == "undefined"){ 
-    v__FillValue = v_missing_value}
-  if (v_missing_value == "undefined"){ 
-    v_missing_value = v__FillValue}
+    if (v__FillValue == "undefined"){ 
+      v__FillValue = v_missing_value}
+    if (v_missing_value == "undefined"){ 
+      v_missing_value = v__FillValue}
 
   nc_close(id)
   
@@ -173,7 +182,9 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
   }
   
 # file output  
-
+  if(toupper(format)=="CSV")(format <- "csv")
+  if(format!="csv")(format <- "nc")
+  
   if (format=="nc"){
 
   # create netcdf
@@ -190,6 +201,7 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
     compression = NA
   }
  
+    cmsaf_info <- (paste("cmsaf::selpoint for variable ",var,sep=""))
     dum_fname <- unlist(strsplit(outfile,"\\."))
     if (dum_fname[length(dum_fname)]!="nc")(outfile <- paste(outfile,".nc",sep=""))
     data1[is.na(data1)] <- v_missing_value
@@ -215,6 +227,7 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -238,6 +251,7 @@ function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")

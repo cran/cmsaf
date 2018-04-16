@@ -38,7 +38,7 @@ function(var,infile,outfile,nc34=3){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox." 
+   info = "Created with the CM SAF R Toolbox." 
    var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
@@ -88,23 +88,32 @@ function(var,infile,outfile,nc34=3){
   # get information about variables
 	
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(var) %in% toupper(var_default)){
+    var <- var_default[which(toupper(var)==toupper(var_default))]
+  } else {
+      cat("Variable ",var," not found.",sep="","\n")
+      var <- var_default[1]
+      cat("Variable ",var," will be used.",sep="","\n")
+    }
 
    if (var %in% varnames){
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get details of file
+    # get details of file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
-	if ("time_bnds" %in% varnames){
-	  tbnds1 <- ncvar_get(id,"time_bnds")
-	}
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
+	  if ("time_bnds" %in% varnames){
+	    tbnds1 <- ncvar_get(id,"time_bnds")
+	  }
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
@@ -139,9 +148,9 @@ function(var,infile,outfile,nc34=3){
 
   for (i in 1:length(mul)){
     if (sum(testnum==mul[i])>=1){
-    test_count <- test_count+1
-    test <- cbind(test,mul[i])
-    testnum[testnum==mul[i]] <- -999
+      test_count <- test_count+1
+      test <- cbind(test,mul[i])
+      testnum[testnum==mul[i]] <- -999
     }
   }
 
@@ -150,11 +159,11 @@ function(var,infile,outfile,nc34=3){
   count <- 1
   for (i in 1:test_count){
       mon_dummy <- which(mul==test[i+1])
-	if (length(mon_dummy)>=1){
-	  time_bnds[1,count] <- time1[min(mon_dummy)]
-	  time_bnds[2,count] <- time1[max(mon_dummy)]
-	  count <- count+1
-	}
+	  if (length(mon_dummy)>=1){
+	    time_bnds[1,count] <- time1[min(mon_dummy)]
+	    time_bnds[2,count] <- time1[max(mon_dummy)]
+	    count <- count+1
+	  }
    }
 
 # create netcdf
@@ -171,6 +180,7 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
+    cmsaf_info <- (paste("cmsaf::monmean for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
 
     nb2 <- c(0,1)
@@ -192,6 +202,7 @@ function(var,infile,outfile,nc34=3){
 
     ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
     ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+    ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
     ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
     ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")

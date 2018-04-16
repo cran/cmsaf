@@ -38,7 +38,7 @@ function(var,month=c(1),infile,outfile,nc34=3){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox." 
+   info = "Created with the CM SAF R Toolbox." 
    var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
@@ -88,6 +88,15 @@ function(var,month=c(1),infile,outfile,nc34=3){
   # get information about variables
 	
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(var) %in% toupper(var_default)){
+    var <- var_default[which(toupper(var)==toupper(var_default))]
+  } else {
+      cat("Variable ",var," not found.",sep="","\n")
+      var <- var_default[1]
+      cat("Variable ",var," will be used.",sep="","\n")
+    }
 
    if (var %in% varnames){
     for (i in 1:6){
@@ -96,7 +105,7 @@ function(var,month=c(1),infile,outfile,nc34=3){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get details of file
+    # get details of file
 
 	  lon <- ncvar_get(id,lon_name)
 	  lat <- ncvar_get(id,lat_name)
@@ -138,7 +147,7 @@ function(var,month=c(1),infile,outfile,nc34=3){
     for (j in 1:length(month)){
     	dum <- which(mon==month[j]&year==yl[i])
     	if (length(dum)==0)(dum <- NA)
-	    seas[j,i] <- dum
+	      seas[j,i] <- dum
     }
   }
 

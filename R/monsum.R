@@ -38,7 +38,7 @@ function(var,infile,outfile,nc34=3){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox."
+   info = "Created with the CM SAF R Toolbox."
    var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
@@ -88,6 +88,15 @@ function(var,infile,outfile,nc34=3){
   # get information about variables
 
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(var) %in% toupper(var_default)){
+    var <- var_default[which(toupper(var)==toupper(var_default))]
+  } else {
+      cat("Variable ",var," not found.",sep="","\n")
+      var <- var_default[1]
+      cat("Variable ",var," will be used.",sep="","\n")
+    }
 
    if (var %in% varnames){
     for (i in 1:6){
@@ -139,9 +148,9 @@ function(var,infile,outfile,nc34=3){
 
   for (i in 1:length(mul)){
     if (sum(testnum==mul[i])>=1){
-    test_count <- test_count+1
-    test <- cbind(test,mul[i])
-    testnum[testnum==mul[i]] <- -999
+      test_count <- test_count+1
+      test <- cbind(test,mul[i])
+      testnum[testnum==mul[i]] <- -999
     }
   }
 

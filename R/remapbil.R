@@ -37,7 +37,7 @@ remapbil <- function(var,infile1,infile2,outfile,nc34=3){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox."
+   info = "Created with the CM SAF R Toolbox."
    var_prec="float"
 
    att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
@@ -87,6 +87,15 @@ remapbil <- function(var,infile1,infile2,outfile,nc34=3){
   # get information about variables
 	
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(var) %in% toupper(var_default)){
+    var <- var_default[which(toupper(var)==toupper(var_default))]
+  } else {
+      cat("Variable ",var," not found.",sep="","\n")
+      var <- var_default[1]
+      cat("Variable ",var," will be used.",sep="","\n")
+    }
 
    if (var %in% varnames){
     for (i in 1:length(att_list)){
@@ -95,19 +104,19 @@ remapbil <- function(var,infile1,infile2,outfile,nc34=3){
 	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get data of first file
+    # get data of first file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
 	
-	    # check coordinates if CM SAF conform (-180 to 180)
-	if(max(lon) > 180)(lon <- ifelse(lon > 180, -360 + lon, lon))
+	  # check coordinates if CM SAF conform (-180 to 180)
+	  if(max(lon) > 180)(lon <- ifelse(lon > 180, -360 + lon, lon))
 
-	if ("time_bnds" %in% varnames){
-	  tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
-	}
+	  if ("time_bnds" %in% varnames){
+	    tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
+	  }
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
@@ -172,6 +181,7 @@ remapbil <- function(var,infile1,infile2,outfile,nc34=3){
     compression = NA
   }
 
+    cmsaf_info <- (paste("cmsaf::remapbil for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
 
     nb2 <- c(0,1)
@@ -196,6 +206,7 @@ remapbil <- function(var,infile1,infile2,outfile,nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -219,6 +230,7 @@ remapbil <- function(var,infile1,infile2,outfile,nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")

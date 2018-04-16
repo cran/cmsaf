@@ -38,7 +38,7 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
    v__FillValue = "undefined"
    v_missing_value = "undefined"
 
-   info = "Created with the CM SAF R toolbox."
+   info = "Created with the CM SAF R Toolbox."
    var_prec="float"
 
    att_list <- c("standard_name","units","_FillValue","missing_value","calendar")
@@ -79,29 +79,38 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
     if (t_name %in% dimnames){
       attnames <- names(id$dim[[i]])
       if ("units" %in% attnames){
-	t_units <- ncatt_get(id,t_name,"units")$value}
+	      t_units <- ncatt_get(id,t_name,"units")$value}
       if ("calendar" %in% attnames){
-	t_calendar <- ncatt_get(id,t_name,"calendar")$value}
+	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
     }
   }
 
   # get information about variables
 	
   varnames <- names(id$var)
+  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(vari1) %in% toupper(var_default)){
+    vari1 <- var_default[which(toupper(vari1)==toupper(var_default))]
+  } else {
+      cat("Variable ",vari1," not found.",sep="","\n")
+      vari1 <- var_default[1]
+      cat("Variable ",vari1," will be used.",sep="","\n")
+    }
 
    if (vari1 %in% varnames){
     for (i in 1:length(att_list)){
       att_dum <- ncatt_get(id,vari1,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get data of first file
+    # get data of first file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",vari1," not found! File contains: ",varnames,sep="")),"\n")}
@@ -122,6 +131,15 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
   # get information about variables
 	
   varnames2 <- names(id$var)
+  var_default <- subset(varnames2, !(varnames2 %in% c("lat","lon","time_bnds","nb2","time")))
+  
+  if (toupper(vari2) %in% toupper(var_default)){
+    vari2 <- var_default[which(toupper(vari2)==toupper(var_default))]
+  } else {
+      cat("Variable ",vari2," not found.",sep="","\n")
+      vari2 <- var_default[1]
+      cat("Variable ",vari2," will be used.",sep="","\n")
+    }
 
    if (vari2 %in% varnames2){
 
