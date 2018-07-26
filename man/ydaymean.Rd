@@ -1,14 +1,14 @@
-\name{timsd}
-\alias{timsd}
+\name{ydaymean}
+\alias{ydaymean}
 \title{
-Determine all-time standard deviations.
+Determine multi-year daily means.
 }
 \description{
-The function determines all-time standard deviation values from  
-data of a single CM SAF NetCDF input file.
+The function determines multi-year daily mean values from data of a single 
+CM SAF NetCDF input file.
 }
 \usage{
-timsd(var, infile, outfile, nc34)
+ydaymean(var, infile, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -26,7 +26,7 @@ Default output is NetCDFv3.
 }
 }
 \value{
-A NetCDF file including a timeseries of all-time standard deviations is written.
+A NetCDF file including a timeseries of multi-year daily means is written.
 }
 \author{
 Steffen Kothe
@@ -43,10 +43,10 @@ library(ncdf4)
 
   lon <- seq(5,15,0.5)
   lat <- seq(45,55,0.5)
-  time <- seq(as.Date('2000-01-01'), as.Date('2010-12-31'), 'month')
+  time <- seq(as.Date('2005-01-01'), as.Date('2010-12-31'), 'day')
   origin <- as.Date('1983-01-01 00:00:00')
   time <- as.numeric(difftime(time,origin,units='hour'))
-  data <- array(250:350,dim=c(21,21,132))
+  data <- array(250:350,dim=c(21,21,2191))
 
 ## create example NetCDF
 
@@ -62,7 +62,8 @@ library(ncdf4)
    ncatt_put(ncnew,'lat','standard_name','latitude',prec='text')
    nc_close(ncnew)
 
-## Determine the all-time seasonal standard deviation of the example  
-## CM SAF NetCDF file and write the output to a new file.
-   timsd('SIS','CMSAF_example_file.nc', 'CMSAF_example_file_timsd.nc')
+## Determine the multi-year daily mean of the example CM SAF NetCDF 
+## file and write the output to a new file.
+   ydaymean('SIS','CMSAF_example_file.nc', 
+   'CMSAF_example_file_ydaymean.nc')
 }

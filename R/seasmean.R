@@ -50,9 +50,10 @@ function(var,infile,outfile,nc34=3){
 
   id <- nc_open(infile)
 
-  # get information about dimensions
-
-  dimnames <- names(id$dim)
+  # get information about dimensions and attributes
+  
+  dimnames   <- names(id$dim)
+  global_att <- ncatt_get(id,0)
 
  # check standard_names of dimensions
     for (i in 1:length(dimnames)){
@@ -139,19 +140,6 @@ function(var,infile,outfile,nc34=3){
   mul <- year*mon
   dummy_vec <- c(1:length(mon))
 
-  seas <- array(NA,dim=c(4,3,length(yl)))
-
-  for (i in 1:length(yl)){
-    win <- which(mon==1&year==yl[i]|mon==2&year==yl[i]|mon==12&year==(yl[i]-1))
-    if (length(win)==3){seas[1,,i]<-win}
-      spr <- which(mon==3&year==yl[i]|mon==4&year==yl[i]|mon==5&year==yl[i])
-    if (length(spr)==3){seas[2,,i]<-spr}
-      sum <- which(mon==6&year==yl[i]|mon==7&year==yl[i]|mon==8&year==yl[i])
-    if (length(sum)==3){seas[3,,i]<-sum}
-      aut <- which(mon==9&year==yl[i]|mon==10&year==yl[i]|mon==11&year==yl[i])
-    if (length(aut)==3){seas[4,,i]<-aut}
-  }
-
   target <- array(NA,dim=c(length(lon),length(lat),1))
   tbnds <- array(NA, dim=c(2,1))
 
@@ -172,6 +160,22 @@ function(var,infile,outfile,nc34=3){
     cmsaf_info <- (paste("cmsaf::seasmean for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
     nb2 <- c(0,1)
+    
+    # prepare global attributes
+    global_att_default <- c("institution","title","summary","id","creator_name",
+                            "creator_email","creator_url","creator_type","publisher_name",
+                            "publisher_email","publisher_url","publisher_type",
+                            "references","keywords_vocabulary","keywords","project",
+                            "standard_name_vocabulary","geospatial_lat_units",
+                            "geospatial_lon_units","geospatial_lat_resolution",
+                            "geospatial_lon_resolution","platform_vocabulary","platform",
+                            "instrument_vocabulary","instrument","date_created","product_version",
+                            "producer","version","dataset_version","source")
+    
+    global_att_list <- names(global_att)
+    
+    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(global_att_default)]
+    global_att <- global_att[global_att_list]
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
@@ -204,32 +208,49 @@ function(var,infile,outfile,nc34=3){
     ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
     ncatt_put(ncnew,0,"Info",info,prec="text")
+    
+    if (length(global_att_list)>0){
+      for (iglob in 1:length(global_att_list)){
+        ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+      }
+    }
 
   # get data and calculate seasonal means
 
-  id <- nc_open(infile)
-  dum_dat <- array(NA,dim=c(length(lon),length(lat),3))
-  count <- 1
-  for (i in 1:length(yl)){
-    for (j in 1:4){
-      mon_dummy <- seas[j,,i]
-	if (sum(is.na(mon_dummy))==0){
-	  dum_dat[,,1] <- ncvar_get(id,var,start=c(1,1,mon_dummy[1]),count=c(-1,-1,1),collapse_degen=FALSE)
-	  dum_dat[,,2] <- ncvar_get(id,var,start=c(1,1,mon_dummy[2]),count=c(-1,-1,1),collapse_degen=FALSE)
-	  dum_dat[,,3] <- ncvar_get(id,var,start=c(1,1,mon_dummy[3]),count=c(-1,-1,1),collapse_degen=FALSE)
-	  cat("\r","apply seasonal mean ",count," of ",(length(yl)*4),sep="")
-	  mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
-	  mean_data[is.na(mean_data)] <- v_missing_value
-	  tdum <- min(time1[mon_dummy])
-	  tbnds[1,1] <- min(time1[mon_dummy])
-	  tbnds[2,1] <- max(time1[mon_dummy])
-	  ncvar_put(ncnew,var1,mean_data,start=c(1,1,count),count=c(-1,-1,1))
-	  ncvar_put(ncnew,t,tdum,start=count,count=1)
-	  ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
-	  count <- count+1
-	}
-     }
-   }
+    id <- nc_open(infile)
+    count <- 1
+    for (i in 1:length(yl)){
+      for (j in 1:4){ 
+        dum_dat <- NULL
+        
+        if(j==1){
+          dum <- which(mon==1&year==yl[i]|mon==2&year==yl[i]|mon==12&year==(yl[i]-1))
+        }
+        if(j==2){
+          dum <- which(mon==3&year==yl[i]|mon==4&year==yl[i]|mon==5&year==yl[i])
+        }
+        if(j==3){
+          dum <- which(mon==6&year==yl[i]|mon==7&year==yl[i]|mon==8&year==yl[i])
+        }
+        if(j==4){
+          dum <- which(mon==9&year==yl[i]|mon==10&year==yl[i]|mon==11&year==yl[i])
+        }
+        
+        if (length(dum)==3|length(dum)>85){
+          dum_dat <- ncvar_get(id,var,start=c(1,1,dum[1]),count=c(-1,-1,length(dum)),collapse_degen=FALSE)
+          cat("\r","apply seasonal mean ",count," of ",(length(yl)*4),sep="")
+          mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
+          mean_data[is.na(mean_data)] <- v_missing_value
+          tdum <- min(time1[dum])
+          tbnds[1,1] <- min(time1[dum])
+          tbnds[2,1] <- max(time1[dum])
+          ncvar_put(ncnew,var1,mean_data,start=c(1,1,count),count=c(-1,-1,1))
+          ncvar_put(ncnew,t,tdum,start=count,count=1)
+          ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
+          count <- count+1
+        }
+      }
+    }
  nc_close(id)
 
  nc_close(ncnew)

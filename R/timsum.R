@@ -1,4 +1,4 @@
-ymonmin <-
+timsum <-
 function(var,infile,outfile,nc34=3){
 
   start.time <- Sys.time()
@@ -9,7 +9,11 @@ function(var,infile,outfile,nc34=3){
 
   if (filecheck[[1]]){
     infile <- filecheck[[2]]
-    outfile <- filecheck[[3]]    
+    outfile <- filecheck[[3]]
+
+# user define section
+
+  limit <- 2601*2601*31	  # This value can be ajusted to avoid RAM overflow
 
 # define standard names of variables and dimensions
 
@@ -98,16 +102,6 @@ function(var,infile,outfile,nc34=3){
       var <- var_default[1]
       cat("Variable ",var," will be used.",sep="","\n")
     }
-  
-    # set variable precision 
-    varind   <- which(varnames==var)
-    varprec  <- NULL
-    varprec  <- id$var[[varind]]$prec
-    if (!is.null(varprec)){
-      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
-        (var_prec <- varprec)
-      }
-    }
 
    if (var %in% varnames){
     for (i in 1:6){
@@ -122,9 +116,6 @@ function(var,infile,outfile,nc34=3){
 	  lat <- ncvar_get(id,lat_name)
 	  time1 <- ncvar_get(id,t_name)
 	  time_len <- length(time1)
-	  if ("time_bnds" %in% varnames){
-	    tbnds1 <- ncvar_get(id,"time_bnds")
-	  }
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
@@ -134,31 +125,39 @@ function(var,infile,outfile,nc34=3){
   if (v_missing_value == "undefined"){ 
     v_missing_value = v__FillValue}
 
-  nc_close(id)   
+  # check data dimensions 
+  
+  if ((as.numeric(length(lon))*as.numeric(length(lat))*as.numeric(time_len))<limit){
 
-# extract time information
+    # calculate temporal mean in a sequence depending on limit
 
-  date.time <- as.Date(get_time(t_units,time1))
-  a <- as.character(date.time)
-  b <- strsplit(a,"-")
-  d <- unlist(b)
-  dummy <- length(d)
-  dum <- seq(2,dummy,3)
-  mon <- as.integer(d[dum])
-  ml <- as.integer(levels(factor(mon)))
-  dummy_vec <- c(1:length(mon))
+    dum_dat <- ncvar_get(id,var,collapse_degen=FALSE)
+    cat("sum up", "\n")
+    target <- rowMeans(dum_dat,dims=2,na.rm=T)
+  } else {
 
-  target <- array(NA,dim=c(length(lon),length(lat),length(ml)))
-  time_bnds <- array(NA, dim=c(2,length(ml)))
-  count <- 1
-   for (j in 1:length(ml)){
-     mon_dummy <- which(mon==ml[j])
-     time_bnds[1,count] <- time1[min(mon_dummy)]
-     time_bnds[2,count] <- time1[max(mon_dummy)]
-     count <- count+1
+   dum1 <- round((limit/length(lon))/length(lat))
+   dum2 <- seq(1,time_len,dum1)
+   dum3 <- array(dum1,dim=c(length(dum2)))
+   cor <- dum1*length(dum2)-time_len
+   dum3[length(dum2)] <- dum3[length(dum2)]-cor
+  
+   sum_data <- array(NA,dim=c(length(lon),length(lat),length(dum2)))
+
+   cat("sum up sequentially",sep="","\n")
+   for (i in 1:length(dum2)){
+    dum_dat <- ncvar_get(id,var,start=c(1,1,dum2[i]),count=c(-1,-1,dum3[i]),collapse_degen=FALSE)
+    sum_data[,,i] <- rowSums(dum_dat,dims=2,na.rm=T)
    }
-     
+    target <- rowSums(sum_data,dims=2,na.rm=T)
+  }
+   nc_close(id)
+
 # create netcdf
+
+  time_bnds <- array(NA, dim=c(2,1))
+  time_bnds[1,1] <- min(time1)
+  time_bnds[2,1] <- max(time1)
 
   cat("create netcdf", "\n")
 
@@ -172,7 +171,7 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
-    cmsaf_info <- (paste("cmsaf::ymonmin for variable ",var,sep=""))
+    cmsaf_info <- (paste("cmsaf::timsum for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
 
     nb2 <- c(0,1)
@@ -232,27 +231,9 @@ function(var,infile,outfile,nc34=3){
       }
     }
 
-    # get data and calculate multi-year monthly minimum
-
-    for (j in 1:length(ml)){
-      mon_dummy <- which(mon==ml[j])
-      startt <- dummy_vec[mon_dummy]
-      dum_dat <- array(NA,dim=c(length(lon),length(lat),length(startt)))
-      id <- nc_open(infile)
-      for (i in 1:length(startt)){
-	      dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,startt[i]),count=c(-1,-1,1),collapse_degen=FALSE)
-      }
-      cat("\r","multi-year monthly minimum ",j,sep="")
-	    min_data <- do.call(pmin, c(na.rm=T,lapply(seq(1:dim(dum_dat)[3]), function(i) dum_dat[,,i])))
-	    min_data[is.na(min_data)] <- v_missing_value
-      ncvar_put(ncnew,var1,min_data,start=c(1,1,j),count=c(-1,-1,1))
-    }
-
- nc_close(id)
-
  nc_close(ncnew)
 
   end.time <- Sys.time()
-  cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
+  cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
   } # endif filecheck
 }

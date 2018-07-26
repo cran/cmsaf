@@ -1,5 +1,5 @@
-\name{read_nc}
-\alias{read_nc}
+\name{read_ncvar}
+\alias{read_ncvar}
 \title{
 Read NetCDF variable.
 }
@@ -8,7 +8,7 @@ This simple function reads a variable of a NetCDF file
 into R.  
 }
 \usage{
-read_nc(var,infile)
+read_ncvar(var,infile)
 }
 \arguments{
   \item{var}{
@@ -19,8 +19,8 @@ Filename of input NetCDF file. This may include the directory (character).
 }
 }
 \value{
-The output depends on the NetCDF variable and is most commonly a 2 or 3
-dimensional array. 
+The output is a list object including the variable and the corressponding time variable. 
+The dimension of the chosen variable is most commonly a two or three dimensional array. 
 }
 \author{
 Steffen Kothe
@@ -57,5 +57,6 @@ library(ncdf4)
    nc_close(ncnew)
 
 ## Load the data of variable 'SIS' of the example file into R.
-   read_nc('SIS','CMSAF_example_file.nc')
+## To access the data use e.g., my.data$SIS
+   my.data <- read_ncvar('SIS','CMSAF_example_file.nc')
 }

@@ -54,9 +54,10 @@ function(var,infile,outfile,nc34=3){
 
   id <- nc_open(infile)
 
-  # get information about dimensions
-
-  dimnames <- names(id$dim)
+  # get information about dimensions and attributes
+  
+  dimnames   <- names(id$dim)
+  global_att <- ncatt_get(id,0)
 
  # check standard_names of dimensions
     for (i in 1:length(dimnames)){
@@ -177,6 +178,22 @@ function(var,infile,outfile,nc34=3){
 
     nb2 <- c(0,1)
     times <- time_bnds[1,]
+    
+    # prepare global attributes
+    global_att_default <- c("institution","title","summary","id","creator_name",
+                            "creator_email","creator_url","creator_type","publisher_name",
+                            "publisher_email","publisher_url","publisher_type",
+                            "references","keywords_vocabulary","keywords","project",
+                            "standard_name_vocabulary","geospatial_lat_units",
+                            "geospatial_lon_units","geospatial_lat_resolution",
+                            "geospatial_lon_resolution","platform_vocabulary","platform",
+                            "instrument_vocabulary","instrument","date_created","product_version",
+                            "producer","version","dataset_version","source")
+    
+    global_att_list <- names(global_att)
+    
+    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(global_att_default)]
+    global_att <- global_att[global_att_list]
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
@@ -209,6 +226,12 @@ function(var,infile,outfile,nc34=3){
     ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
     ncatt_put(ncnew,0,"Info",info,prec="text")
+    
+    if (length(global_att_list)>0){
+      for (iglob in 1:length(global_att_list)){
+        ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+      }
+    }
 
  nc_close(ncnew)
 

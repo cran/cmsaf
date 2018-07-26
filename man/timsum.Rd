@@ -1,14 +1,15 @@
-\name{timsd}
-\alias{timsd}
+\name{timsum}
+\alias{timsum}
 \title{
-Determine all-time standard deviations.
+Determine sum of a time series.
 }
 \description{
-The function determines all-time standard deviation values from  
-data of a single CM SAF NetCDF input file.
+The function determines the temporal sum from data of a single CM SAF 
+NetCDF input file and is useful to calculate climatological sums. The 
+function limits the timesteps, which are read at once, to avoid RAM overflow.
 }
 \usage{
-timsd(var, infile, outfile, nc34)
+timsum(var, infile, outfile, nc34)
 }
 \arguments{
   \item{var}{
@@ -18,7 +19,7 @@ Name of NetCDF variable (character).
 Filename of input NetCDF file. This may include the directory (character).
 }
   \item{outfile}{
-Filename of output NetCDF file. This may include the directory (character)..
+Filename of output NetCDF file. This may include the directory (character).
 }
   \item{nc34}{
 NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).
@@ -26,7 +27,7 @@ Default output is NetCDFv3.
 }
 }
 \value{
-A NetCDF file including a timeseries of all-time standard deviations is written.
+A NetCDF file including the temporal sum is written.
 }
 \author{
 Steffen Kothe
@@ -62,7 +63,7 @@ library(ncdf4)
    ncatt_put(ncnew,'lat','standard_name','latitude',prec='text')
    nc_close(ncnew)
 
-## Determine the all-time seasonal standard deviation of the example  
-## CM SAF NetCDF file and write the output to a new file.
-   timsd('SIS','CMSAF_example_file.nc', 'CMSAF_example_file_timsd.nc')
+## Determine the all-time sum of the example CM SAF NetCDF file and write 
+## the output to a new file.
+   timsum('SIS','CMSAF_example_file.nc','CMSAF_example_file_timsum.nc')
 }

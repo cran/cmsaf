@@ -1,4 +1,4 @@
-ymonmin <-
+ydaymean <-
 function(var,infile,outfile,nc34=3){
 
   start.time <- Sys.time()
@@ -98,16 +98,6 @@ function(var,infile,outfile,nc34=3){
       var <- var_default[1]
       cat("Variable ",var," will be used.",sep="","\n")
     }
-  
-    # set variable precision 
-    varind   <- which(varnames==var)
-    varprec  <- NULL
-    varprec  <- id$var[[varind]]$prec
-    if (!is.null(varprec)){
-      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
-        (var_prec <- varprec)
-      }
-    }
 
    if (var %in% varnames){
     for (i in 1:6){
@@ -139,22 +129,16 @@ function(var,infile,outfile,nc34=3){
 # extract time information
 
   date.time <- as.Date(get_time(t_units,time1))
-  a <- as.character(date.time)
-  b <- strsplit(a,"-")
-  d <- unlist(b)
-  dummy <- length(d)
-  dum <- seq(2,dummy,3)
-  mon <- as.integer(d[dum])
-  ml <- as.integer(levels(factor(mon)))
-  dummy_vec <- c(1:length(mon))
+  doy <- as.numeric(strftime(date.time, format = "%j"))
+  dummy_vec <- c(1:length(doy))
 
-  target <- array(NA,dim=c(length(lon),length(lat),length(ml)))
-  time_bnds <- array(NA, dim=c(2,length(ml)))
+  target <- array(NA,dim=c(length(lon),length(lat),max(doy,na.rm=T)))
+  time_bnds <- array(NA, dim=c(2,max(doy,na.rm=T)))
   count <- 1
-   for (j in 1:length(ml)){
-     mon_dummy <- which(mon==ml[j])
-     time_bnds[1,count] <- time1[min(mon_dummy)]
-     time_bnds[2,count] <- time1[max(mon_dummy)]
+   for (j in 1:max(doy,na.rm=T)){
+     day_dummy <- which(doy==j)
+     time_bnds[1,count] <- time1[min(day_dummy)]
+     time_bnds[2,count] <- time1[max(day_dummy)]
      count <- count+1
    }
      
@@ -172,7 +156,7 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
-    cmsaf_info <- (paste("cmsaf::ymonmin for variable ",var,sep=""))
+    cmsaf_info <- (paste("cmsaf::ydaymean for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
 
     nb2 <- c(0,1)
@@ -232,20 +216,20 @@ function(var,infile,outfile,nc34=3){
       }
     }
 
-    # get data and calculate multi-year monthly minimum
+    # get data and calculate multi-year monthly means
 
-    for (j in 1:length(ml)){
-      mon_dummy <- which(mon==ml[j])
-      startt <- dummy_vec[mon_dummy]
+    for (j in 1:max(doy,na.rm=T)){
+      day_dummy <- which(doy==j)
+      startt <- dummy_vec[day_dummy]
       dum_dat <- array(NA,dim=c(length(lon),length(lat),length(startt)))
       id <- nc_open(infile)
       for (i in 1:length(startt)){
 	      dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,startt[i]),count=c(-1,-1,1),collapse_degen=FALSE)
       }
-      cat("\r","multi-year monthly minimum ",j,sep="")
-	    min_data <- do.call(pmin, c(na.rm=T,lapply(seq(1:dim(dum_dat)[3]), function(i) dum_dat[,,i])))
-	    min_data[is.na(min_data)] <- v_missing_value
-      ncvar_put(ncnew,var1,min_data,start=c(1,1,j),count=c(-1,-1,1))
+      cat("\r","averaging day ",j,sep="")
+      mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
+      mean_data[is.na(mean_data)] <- v_missing_value
+      ncvar_put(ncnew,var1,mean_data,start=c(1,1,j),count=c(-1,-1,1))
     }
 
  nc_close(id)

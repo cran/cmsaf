@@ -50,9 +50,10 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
 
   id <- nc_open(infile1)
 
-  # get information about dimensions
-
-  dimnames <- names(id$dim)
+  # get information about dimensions and attributes
+  
+  dimnames   <- names(id$dim)
+  global_att <- ncatt_get(id,0)
 
  # check standard_names of dimensions
     for (i in 1:length(dimnames)){
@@ -166,12 +167,12 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
 	    }
     }
 
-      # get data of second file
+    # get data of second file
 
-	lon2 <- ncvar_get(id,lon_name)
-	lat2 <- ncvar_get(id,lat_name)
-	time2 <- ncvar_get(id,t_name)
-	time_len2 <- length(time2)
+	  lon2 <- ncvar_get(id,lon_name)
+	  lat2 <- ncvar_get(id,lat_name)
+	  time2 <- ncvar_get(id,t_name)
+	  time_len2 <- length(time2)
    }else{
       nc_close(id)
       stop(cat(paste("Variable ",vari2," not found! File contains: ",varnames,sep="")),"\n")}
@@ -214,6 +215,21 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
 
     target[is.na(target)] <- v_missing_value
 
+    # prepare global attributes
+    global_att_default <- c("institution","title","summary","id","creator_name",
+                            "creator_email","creator_url","creator_type","publisher_name",
+                            "publisher_email","publisher_url","publisher_type",
+                            "references","keywords_vocabulary","keywords","project",
+                            "standard_name_vocabulary","geospatial_lat_units",
+                            "geospatial_lon_units","geospatial_lat_resolution",
+                            "geospatial_lon_resolution","platform_vocabulary","platform",
+                            "instrument_vocabulary","instrument","date_created","product_version",
+                            "producer","version","dataset_version","source")
+    
+    global_att_list <- names(global_att)
+    
+    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(global_att_default)]
+    global_att <- global_att[global_att_list]
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
@@ -242,6 +258,12 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
+      
+      if (length(global_att_list)>0){
+        for (iglob in 1:length(global_att_list)){
+          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+        }
+      }
 
     # get data of infile1 and infile2 and add corresponding fields
 
@@ -250,13 +272,13 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
       id2 <- nc_open(infile2)
   
       for (i in 1:length(time)){
-	dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,i),count=c(-1,-1,1))
-	dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,i),count=c(-1,-1,1))
-	cat("\r","add fields ",i," of ",length(time),sep="")
-	dum_data <- dum_dat1+dum_dat2
-	dum_data[is.na(dum_data)] <- v_missing_value
-	ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
-	ncvar_put(ncnew,t,time[i], start=i, count=1)
+	      dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,i),count=c(-1,-1,1))
+	      dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,i),count=c(-1,-1,1))
+	      cat("\r","add fields ",i," of ",length(time),sep="")
+	      dum_data <- dum_dat1+dum_dat2
+	      dum_data[is.na(dum_data)] <- v_missing_value
+	      ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,time[i], start=i, count=1)
       }
       nc_close(id1)
       nc_close(id2)
@@ -284,12 +306,12 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
       dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,1),count=c(-1,-1,1))
   
       for (i in 1:length(time)){	
-	dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,i),count=c(-1,-1,1))
-	cat("\r","add fields ",i," of ",length(time),sep="")
-	dum_data <- dum_dat1+dum_dat2
-	dum_data[is.na(dum_data)] <- v_missing_value
-	ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
-	ncvar_put(ncnew,t,time[i], start=i, count=1)
+	      dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,i),count=c(-1,-1,1))
+	      cat("\r","add fields ",i," of ",length(time),sep="")
+	      dum_data <- dum_dat1+dum_dat2
+	      dum_data[is.na(dum_data)] <- v_missing_value
+	      ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,time[i], start=i, count=1)
       }
       nc_close(id1)
       nc_close(id2)
@@ -302,12 +324,12 @@ function(vari1,vari2,infile1,infile2,outfile,nc34=3){
       dum_dat2 <- ncvar_get(id2,vari2,start=c(1,1,1),count=c(-1,-1,1))
   
       for (i in 1:length(time)){	
-	dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,i),count=c(-1,-1,1))
-	cat("\r","add fields ",i," of ",length(time),sep="")
-	dum_data <- dum_dat1+dum_dat2
-	dum_data[is.na(dum_data)] <- v_missing_value
-	ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
-	ncvar_put(ncnew,t,time[i], start=i, count=1)
+	      dum_dat1 <- ncvar_get(id1,vari1,start=c(1,1,i),count=c(-1,-1,1))
+	      cat("\r","add fields ",i," of ",length(time),sep="")
+	      dum_data <- dum_dat1+dum_dat2
+	      dum_data[is.na(dum_data)] <- v_missing_value
+	      ncvar_put(ncnew,var1,dum_data,start=c(1,1,i),count=c(-1,-1,1))
+	      ncvar_put(ncnew,t,time[i], start=i, count=1)
       }
       nc_close(id1)
       nc_close(id2)

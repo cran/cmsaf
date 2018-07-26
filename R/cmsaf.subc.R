@@ -50,9 +50,10 @@ function(var,const=0,infile,outfile,nc34=3){
 
   id <- nc_open(infile)
 
-  # get information about dimensions
-
-  dimnames <- names(id$dim)
+  # get information about dimensions and attributes
+  
+  dimnames   <- names(id$dim)
+  global_att <- ncatt_get(id,0)
 
  # check standard_names of dimensions
     for (i in 1:length(dimnames)){
@@ -179,9 +180,25 @@ function(var,const=0,infile,outfile,nc34=3){
     compression = NA
   }
 
+    cmsaf_info <- (paste("cmsaf::cmsaf.subc ",const," subtracted from variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
-
     nb2 <- c(0,1)
+    
+    # prepare global attributes
+    global_att_default <- c("institution","title","summary","id","creator_name",
+                            "creator_email","creator_url","creator_type","publisher_name",
+                            "publisher_email","publisher_url","publisher_type",
+                            "references","keywords_vocabulary","keywords","project",
+                            "standard_name_vocabulary","geospatial_lat_units",
+                            "geospatial_lon_units","geospatial_lat_resolution",
+                            "geospatial_lon_resolution","platform_vocabulary","platform",
+                            "instrument_vocabulary","instrument","date_created","product_version",
+                            "producer","version","dataset_version","source")
+    
+    global_att_list <- names(global_att)
+    
+    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(global_att_default)]
+    global_att <- global_att[global_att_list]
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
@@ -203,6 +220,7 @@ function(var,const=0,infile,outfile,nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -217,6 +235,12 @@ function(var,const=0,infile,outfile,nc34=3){
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
+      
+      if (length(global_att_list)>0){
+        for (iglob in 1:length(global_att_list)){
+          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+        }
+      }
 
     } else {
       vars <- list(var1)
@@ -226,6 +250,7 @@ function(var,const=0,infile,outfile,nc34=3){
 
       ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
       ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
+      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
 
       ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
       ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
@@ -239,7 +264,12 @@ function(var,const=0,infile,outfile,nc34=3){
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
-
+      
+      if (length(global_att_list)>0){
+        for (iglob in 1:length(global_att_list)){
+          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+        }
+      }
     }
 
     # multiply each timestep with a constant number

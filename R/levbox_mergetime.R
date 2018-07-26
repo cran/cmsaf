@@ -47,9 +47,10 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc
   file <- paste(path,"/",file,sep="")
   id <- nc_open(file)
 
-  # get information about dimensions
-
-  dimnames <- names(id$dim)
+  # get information about dimensions and attributes
+  
+  dimnames   <- names(id$dim)
+  global_att <- ncatt_get(id,0)
 
  # check standard_names of dimensions
     for (i in 1:length(dimnames)){
@@ -109,24 +110,24 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc
     for (i in 1:6){
       att_dum <- ncatt_get(id,var,att_list[i])
       if (att_dum$hasatt){
-	assign(v_att_list[i],att_dum$value)}
+	      assign(v_att_list[i],att_dum$value)}
     }
 
-      # get data of first file
+    # get data of first file
 
-	lon <- ncvar_get(id,lon_name)
-	lat <- ncvar_get(id,lat_name)
-	time1 <- ncvar_get(id,t_name)
-	time_len <- length(time1)
-	if ("time_bnds" %in% varnames){
-	  tbnds1 <- ncvar_get(id,"time_bnds")
-	}
+	  lon <- ncvar_get(id,lon_name)
+	  lat <- ncvar_get(id,lat_name)
+	  time1 <- ncvar_get(id,t_name)
+	  time_len <- length(time1)
+	  if ("time_bnds" %in% varnames){
+	    tbnds1 <- ncvar_get(id,"time_bnds")
+	  }
 	
-	lon_limit <- which(lon>=lon1&lon<=lon2)  
-	lat_limit <- which(lat>=lat1&lat<=lat2) 
+	  lon_limit <- which(lon>=lon1&lon<=lon2)  
+	  lat_limit <- which(lat>=lat1&lat<=lat2) 
 
-	lon <- lon[lon_limit]
-	lat <- lat[lat_limit]
+	  lon <- lon[lon_limit]
+	  lat <- lat[lat_limit]
   
 	# check for empty lon_limit or lat_limit
 	
@@ -189,6 +190,22 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc
     cmsaf_info <- (paste("cmsaf::levbox_mergetime for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
     nb2 <- c(0,1)
+    
+    # prepare global attributes
+    global_att_default <- c("institution","title","summary","id","creator_name",
+                            "creator_email","creator_url","creator_type","publisher_name",
+                            "publisher_email","publisher_url","publisher_type",
+                            "references","keywords_vocabulary","keywords","project",
+                            "standard_name_vocabulary","geospatial_lat_units",
+                            "geospatial_lon_units","geospatial_lat_resolution",
+                            "geospatial_lon_resolution","platform_vocabulary","platform",
+                            "instrument_vocabulary","instrument","date_created","product_version",
+                            "producer","version","dataset_version","source")
+    
+    global_att_list <- names(global_att)
+    
+    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(global_att_default)]
+    global_att <- global_att[global_att_list]
 
     x <- ncdim_def(name="lon",units=lon_units,vals=lon)
     y <- ncdim_def(name="lat",units=lat_units,vals=lat)
@@ -225,6 +242,12 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
+      
+      if (length(global_att_list)>0){
+        for (iglob in 1:length(global_att_list)){
+          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+        }
+      }
 
     } else {
       vars <- list(var1)
@@ -248,7 +271,12 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc
       ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
 
       ncatt_put(ncnew,0,"Info",info,prec="text")
-
+      
+      if (length(global_att_list)>0){
+        for (iglob in 1:length(global_att_list)){
+          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+        }
+      }
     }
     
     # check timestep sorting
