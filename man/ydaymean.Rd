@@ -43,10 +43,10 @@ library(ncdf4)
 
   lon <- seq(5,15,0.5)
   lat <- seq(45,55,0.5)
-  time <- seq(as.Date('2005-01-01'), as.Date('2010-12-31'), 'day')
+  time <- seq(as.Date('2009-01-01'), as.Date('2010-12-31'), 'day')
   origin <- as.Date('1983-01-01 00:00:00')
   time <- as.numeric(difftime(time,origin,units='hour'))
-  data <- array(250:350,dim=c(21,21,2191))
+  data <- array(250:350,dim=c(21,21,730))
 
 ## create example NetCDF
 
