@@ -218,21 +218,22 @@ function(var,infile,outfile,nc34=3){
 
     # get data and calculate multi-year monthly means
 
-    for (j in 1:max(doy,na.rm=T)){
-      day_dummy <- which(doy==j)
-      startt <- dummy_vec[day_dummy]
-      dum_dat <- array(NA,dim=c(length(lon),length(lat),length(startt)))
-      id <- nc_open(infile)
-      for (i in 1:length(startt)){
-	      dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,startt[i]),count=c(-1,-1,1),collapse_degen=FALSE)
+    id <- nc_open(infile)
+    
+      for (j in 1:max(doy,na.rm=T)){
+        day_dummy <- which(doy==j)
+        startt <- dummy_vec[day_dummy]
+        dum_dat <- array(NA,dim=c(length(lon),length(lat),length(startt)))
+        for (i in 1:length(startt)){
+	        dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,startt[i]),count=c(-1,-1,1),collapse_degen=FALSE)
+        }
+        cat("\r","averaging day ",j,sep="")
+        mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
+        mean_data[is.na(mean_data)] <- v_missing_value
+        ncvar_put(ncnew,var1,mean_data,start=c(1,1,j),count=c(-1,-1,1))
       }
-      cat("\r","averaging day ",j,sep="")
-      mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
-      mean_data[is.na(mean_data)] <- v_missing_value
-      ncvar_put(ncnew,var1,mean_data,start=c(1,1,j),count=c(-1,-1,1))
-    }
 
- nc_close(id)
+    nc_close(id)
 
  nc_close(ncnew)
 

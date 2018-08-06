@@ -1,4 +1,4 @@
-3d15f0644765c1062923cc82fe781950 *DESCRIPTION
+f6d0f19b39e45138e68c5e77d60e0ee4 *DESCRIPTION
 93bcc2c55a63ea3b4abe85cf0a9e848d *NAMESPACE
 66c92a527105df1b5c901a350f8ccb2c *R/box_mergetime.R
 3d256060c02f8110ac2336a80d162f8d *R/change_att.R
@@ -50,7 +50,7 @@ e3dbe5354b83367b44fb050811df2ae4 *R/timmax.R
 a258fe5cde007654954844bcab112c75 *R/timsum.R
 7dbfe6958f601856ee78b1a861d2119e *R/trend.R
 38b6bd9bafd2e04a8d640edcb3bed466 *R/wfldmean.R
-b4be367888ae5384d00d29ff0860b6ac *R/ydaymean.R
+a8e14d2f4ca8f173132dfb95a9eac0bd *R/ydaymean.R
 d0ad562f9bba3886f8a0a87b66da1adf *R/year.anomaly.R
 4d6f5a7c3d6aec3cd27815419936fc26 *R/yearmean.R
 7a98a27ad582e70e2d95071eb65f069a *R/yearsum.R
@@ -66,7 +66,7 @@ bc915673d71a3b1304d8d078ac274f0b *R/yseassd.R
 8ac2dc12ac46a3f8be3d18df6240bd1a *man/box_mergetime.Rd
 3293719849cfa5523d9e95bd470b246f *man/change_att.Rd
 403e4eaaecfd0d866144daccbd0c0933 *man/checkfile.Rd
-c1e813402defe0264447670b73907cae *man/cmsaf-package.Rd
+5f6d6799bf4f631fdd76ee9167577eea *man/cmsaf-package.Rd
 6ac895017b974670cd48f662caf2454a *man/cmsaf.add.Rd
 4f001010b1cf62dd9ca18dbaddb6c5d1 *man/cmsaf.addc.Rd
 730a2da86fcb51181b44251e78527ae6 *man/cmsaf.cat.Rd
