@@ -280,21 +280,24 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc
     }
     
     # check timestep sorting
-  
-    time_sorting <- time1  
-      
+    
+    time_sorting <- time1
+    file_num <- rep(1,length(time_sorting))  
+    
     if (fdim>=2){
       for (i in 2:fdim){
         cat("\r","checking file order ",i," of ",fdim,sep="")
         file=filelist[i]
         file <- file.path(path,file)
         id <- nc_open(file)
-          dum_time <- as.numeric(ncvar_get(id,t_name))
+        dum_time <- as.numeric(ncvar_get(id,t_name))
         nc_close(id)
         time_sorting <- append(time_sorting,dum_time)
+        file_num <- append(file_num,rep(i,length(dum_time)))
       }
-        
-      filelist <- filelist[order(time_sorting)]
+      
+      file_num <- file_num[order(time_sorting)]
+      filelist <- filelist[unique(file_num)]
       cat("\n","               ")
     }
       
@@ -305,7 +308,7 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc
     for (i in 2:fdim){
       cat("\r","loading file ",i," of ",fdim,sep="")
       file=filelist[i]
-      file <- paste(path,"/",file,sep="")
+      file <- file.path(path,file)
       id <- nc_open(file)
 
       dum_dat <- ncvar_get(id,var,start=c(startx,starty,level,1),count=c(countx,county,1,-1))
@@ -314,6 +317,7 @@ function(var,level=1,path,pattern,outfile,lon1=-180,lon2=180,lat1=-90,lat2=90,nc
 
       dum_t_units <- ncatt_get(id,t_name,"units")$value
       dt_dum <- get_time(dum_t_units,dum_time)
+      
       if (as.character(dt_ref)=="-4712-01-01 12:00:00"){
         dum_time <- (as.numeric(dt_dum)/86400)+2440587.5
       } else {

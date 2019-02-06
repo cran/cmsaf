@@ -9,7 +9,7 @@ NetCDF input file and is useful to calculate climatological means. The
 function limits the timesteps, which are read at once, to avoid RAM overflow.
 }
 \usage{
-timmean(var, infile, outfile, nc34)
+timmean(var, infile, outfile, na.rm, nc34)
 }
 \arguments{
   \item{var}{
@@ -20,6 +20,9 @@ Filename of input NetCDF file. This may include the directory (character).
 }
   \item{outfile}{
 Filename of output NetCDF file. This may include the directory (character).
+}
+  \item{na.rm}{
+Option for treatment of NA values (TRUE = ignore). Default is na.rm = TRUE (logical).
 }
   \item{nc34}{
 NetCDF version of output file. If nc34=4 the output file will be in NetCDFv4 format (numeric).

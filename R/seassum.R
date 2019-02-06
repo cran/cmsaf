@@ -1,4 +1,4 @@
-seasmean <-
+seassum <-
 function(var,infile,outfile,nc34=3){
 
   start.time <- Sys.time()
@@ -147,7 +147,7 @@ function(var,infile,outfile,nc34=3){
     compression = NA
   }
 
-    cmsaf_info <- (paste("cmsaf::seasmean for variable ",var,sep=""))
+    cmsaf_info <- (paste("cmsaf::seassum for variable ",var,sep=""))
     target[is.na(target)] <- v_missing_value
     nb2 <- c(0,1)
     
@@ -209,7 +209,7 @@ function(var,infile,outfile,nc34=3){
 
     id <- nc_open(infile)
     count <- 1
-
+    
     for (i in 1:length(yl)){
       for (j in 1:4){
         seas_dummy <- NA
@@ -241,8 +241,8 @@ function(var,infile,outfile,nc34=3){
           }
           
           if (length(seas_dummy)==3|length(seas_dummy)>85){
-            cat("\r","apply seasonal mean ",count," of ",(length(yl)*4),sep="")
-            mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
+            cat("\r","apply seasonal sum ",count," of ",(length(yl)*4),sep="")
+            mean_data <- rowSums(dum_dat,dims=2,na.rm=T)*ifelse(rowSums(is.na(dum_dat),dims=2) == dim(dum_dat)[3], NA, 1)
             mean_data[is.na(mean_data)] <- v_missing_value
             tdum <- min(time1[seas_dummy],na.rm=T)
             tbnds[1,1] <- min(time1[seas_dummy],na.rm=T)
@@ -255,10 +255,10 @@ function(var,infile,outfile,nc34=3){
         }
       }
     }
-    
-  nc_close(id)
 
-  nc_close(ncnew)
+ nc_close(id)
+
+ nc_close(ncnew)
 
   end.time <- Sys.time()
   cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")

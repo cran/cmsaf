@@ -264,7 +264,8 @@ function(var,infiles,outfile,nc34=3){
     
   # check timestep sorting
   
-  time_sorting <- time1  
+  time_sorting <- time1
+  file_num <- rep(1,length(time_sorting))
       
   if (fdim>=2){
     for (i in 2:fdim){
@@ -274,9 +275,14 @@ function(var,infiles,outfile,nc34=3){
         dum_time <- as.numeric(ncvar_get(id,t_name))
       nc_close(id)
       time_sorting <- append(time_sorting,dum_time)
+      file_num <- append(file_num,rep(i,length(dum_time)))
     }
-        
-    filelist <- filelist[order(time_sorting)]
+     
+    file_num <- file_num[order(time_sorting)]
+    filelist <- filelist[unique(file_num)]
+    if(length(time_sorting)==fdim){
+      filelist <- filelist[order(time_sorting)]
+    }
     cat("\n","               ")
   }
     

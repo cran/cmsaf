@@ -1,5 +1,5 @@
 timmean <-
-function(var,infile,outfile,nc34=3){
+function(var,infile,outfile,na.rm=TRUE,nc34=3){
 
   start.time <- Sys.time()
 
@@ -127,13 +127,17 @@ function(var,infile,outfile,nc34=3){
 
   # check data dimensions 
   
+  if (!na.rm==TRUE & !na.rm==FALSE){
+    na.rm <- TRUE
+  }
+  
   if ((as.numeric(length(lon))*as.numeric(length(lat))*as.numeric(time_len))<limit){
 
     # calculate temporal mean in a sequence depending on limit
 
     dum_dat <- ncvar_get(id,var,collapse_degen=FALSE)
     cat("averaging", "\n")
-    target <- rowMeans(dum_dat,dims=2,na.rm=T)
+    target <- rowMeans(dum_dat,dims=2,na.rm=na.rm)
   } else {
 
    dum1 <- round((limit/length(lon))/length(lat))
@@ -147,11 +151,11 @@ function(var,infile,outfile,nc34=3){
    cat("sequential averaging",sep="","\n")
    for (i in 1:length(dum2)){
     dum_dat <- ncvar_get(id,var,start=c(1,1,dum2[i]),count=c(-1,-1,dum3[i]),collapse_degen=FALSE)
-    sum_data[,,i] <- rowSums(dum_dat,dims=2,na.rm=T)
+    sum_data[,,i] <- rowSums(dum_dat,dims=2,na.rm=na.rm)
     nan <- rowSums(!is.na(dum_dat),dims=2)
     num <- num+nan
    }
-    target <- rowSums(sum_data,dims=2,na.rm=T)/num
+    target <- rowSums(sum_data,dims=2,na.rm=na.rm)/num
   }
    nc_close(id)
 

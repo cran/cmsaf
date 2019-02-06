@@ -157,32 +157,9 @@ function(var,infile,outfile,nc34=3){
 # extract time information
 
   date.time <- as.Date(get_time(t_units,time1))
-  a <- as.character(date.time)
-  b <- strsplit(a,"-")
-  d <- unlist(b)
-  dummy <- length(d)
-  dum <- seq(2,dummy,3)
-  mon <- as.integer(d[dum])
-  dum <- seq(1,dummy,3)
-  year <- as.integer(d[dum])
-  yl <- as.integer(levels(factor(year)))
-  ml <- as.integer(levels(factor(mon)))
-  nmonmeans <- length(yl)*length(ml)
-  mul <- year*mon
-  dummy_vec <- c(1:length(mon))
-
-  seas <- array(NA,dim=c(4,3,length(yl)))
-
-  for (i in 1:length(yl)){
-    win <- which(mon==1&year==yl[i]|mon==2&year==yl[i]|mon==12&year==(yl[i]-1))
-    if (length(win)==3){seas[1,,i]<-win}
-      spr <- which(mon==3&year==yl[i]|mon==4&year==yl[i]|mon==5&year==yl[i])
-    if (length(spr)==3){seas[2,,i]<-spr}
-      sum <- which(mon==6&year==yl[i]|mon==7&year==yl[i]|mon==8&year==yl[i])
-    if (length(sum)==3){seas[3,,i]<-sum}
-      aut <- which(mon==9&year==yl[i]|mon==10&year==yl[i]|mon==11&year==yl[i])
-    if (length(aut)==3){seas[4,,i]<-aut}
-  }
+  mon  <- as.integer(format(date.time,"%m"))
+  year <- as.integer(format(date.time,"%Y"))
+  yl   <- as.integer(unique(year))
 
   target <- array(NA,dim=c(length(lon),length(lat),1))
   tbnds <- array(NA, dim=c(2,1))
@@ -262,47 +239,91 @@ function(var,infile,outfile,nc34=3){
  # get data and calculate multi-year seasonal means
 
   id <- nc_open(infile)
-  seas_clim <- array(NA,dim=c(length(lon),length(lat),4))
-  count <- 1
+  seas_clim  <- array(NA,dim=c(length(lon),length(lat),4))
+
     for (j in 1:4){
-      mon_dummy <- seas[j,,]
-	    dum_dat <- array(NA,dim=c(length(lon),length(lat),length(mon_dummy)))
-	    for (i in 1:length(mon_dummy)){
-	      if (!is.na(mon_dummy[i])){
-	        dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,mon_dummy[i]),count=c(-1,-1,1),collapse_degen=FALSE)
+      seas_dummy <- NA
+      
+      if(j==1){
+        win <- which(mon==1|mon==2|mon==12)
+        if (length(win)>=1){seas_dummy <- win}
+      }
+      if(j==2){
+        spr <- which(mon==3|mon==4|mon==5)
+        if (length(spr)>=1){seas_dummy <- spr}
+      }
+      if(j==3){
+        sum <- which(mon==6|mon==7|mon==8)
+        if (length(sum)>=1){seas_dummy <- sum}
+      }
+      if(j==4){
+        aut <- which(mon==9|mon==10|mon==11)
+        if (length(aut)>=1){seas_dummy <- aut}
+      }
+      
+	    dum_dat <- array(NA,dim=c(length(lon),length(lat),length(seas_dummy)))
+	    
+	    for (i in 1:length(seas_dummy)){
+	      if (!is.na(seas_dummy[i])){
+	        dum_dat[,,i] <- ncvar_get(id,var,start=c(1,1,seas_dummy[i]),count=c(-1,-1,1),collapse_degen=FALSE)
 	      }
 	    }
-	    cat("\r","apply multi-year seasonal mean ",count," of 4",sep="")
+	    
+	    cat("\r","calculate multi-year seasonal mean ",j," of 4",sep="")
 	    seas_clim[,,j] <- rowMeans(dum_dat,dims=2,na.rm=T)
-	    count <- count+1
     }
 
   # calculate seasonal means
 
-  dum_dat <- array(NA,dim=c(length(lon),length(lat),3))
   count <- 1
   cat("\n")
+  
   for (i in 1:length(yl)){
     for (j in 1:4){
-      mon_dummy <- seas[j,,i]
-	    if (sum(is.na(mon_dummy))==0){
-	      dum_dat[,,1] <- ncvar_get(id,var,start=c(1,1,mon_dummy[1]),count=c(-1,-1,1),collapse_degen=FALSE)
-	      dum_dat[,,2] <- ncvar_get(id,var,start=c(1,1,mon_dummy[2]),count=c(-1,-1,1),collapse_degen=FALSE)
-	      dum_dat[,,3] <- ncvar_get(id,var,start=c(1,1,mon_dummy[3]),count=c(-1,-1,1),collapse_degen=FALSE)
-	      cat("\r","apply seasonal mean ",count," of ",(length(yl)*4),sep="")
+      seas_dummy <- NA
+      
+      if(j==1){
+        win <- which(mon==1&year==yl[i]|mon==2&year==yl[i]|mon==12&year==(yl[i]-1))
+        if (length(win)>=1){seas_dummy <- win}
+      }
+      if(j==2){
+        spr <- which(mon==3&year==yl[i]|mon==4&year==yl[i]|mon==5&year==yl[i])
+        if (length(spr)>=1){seas_dummy <- spr}
+      }
+      if(j==3){
+        sum <- which(mon==6&year==yl[i]|mon==7&year==yl[i]|mon==8&year==yl[i])
+        if (length(sum)>=1){seas_dummy <- sum}
+      }
+      if(j==4){
+        aut <- which(mon==9&year==yl[i]|mon==10&year==yl[i]|mon==11&year==yl[i])
+        if (length(aut)>=1){seas_dummy <- aut}
+      }
+      
+      if(!all(is.na(seas_dummy))){
+        dum_dat <- array(NA,dim=c(length(lon),length(lat),length(seas_dummy)))
+      
+        for (k in 1:length(seas_dummy)){
+          if (!is.na(seas_dummy[k])){
+            dum_dat[,,k] <- ncvar_get(id,var,start=c(1,1,seas_dummy[k]),count=c(-1,-1,1),collapse_degen=FALSE)
+          }
+        }
+      
+        cat("\r","apply seasonal mean ",count," of ",(length(yl)*4),sep="")
 	      mean_data <- rowMeans(dum_dat,dims=2,na.rm=T)
 	      mean_data <- mean_data-seas_clim[,,j]
 	      mean_data[is.na(mean_data)] <- v_missing_value
-	      tdum <- min(time1[mon_dummy])
-	      tbnds[1,1] <- min(time1[mon_dummy])
-	      tbnds[2,1] <- max(time1[mon_dummy])
+	      tdum <- min(time1[seas_dummy],na.rm=T)
+	      tbnds[1,1] <- min(time1[seas_dummy],na.rm=T)
+	      tbnds[2,1] <- max(time1[seas_dummy],na.rm=T)
 	      ncvar_put(ncnew,var1,mean_data,start=c(1,1,count),count=c(-1,-1,1))
 	      ncvar_put(ncnew,t,tdum,start=count,count=1)
 	      ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
 	      count <- count+1
-	    }
-     }
-   }
+      }
+	   }
+    }
+    
+
  nc_close(id)
 
  nc_close(ncnew)
