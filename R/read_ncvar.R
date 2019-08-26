@@ -1,141 +1,83 @@
-read_ncvar <-
-function(var,infile){
+#'Read NetCDF variable.
+#'
+#'This simple function reads a variable of a NetCDF file into R.
+#'
+#'@param var Name of NetCDF variable (character).
+#'@param infile Filename of input NetCDF file. This may include the directory
+#'  (character).
+#'@param verbose logical; if TRUE, progress messages are shown
+#'
+#'@return The output is a list object including the variable and the
+#'  corresponding time variable. The dimension of the chosen variable is most
+#'  commonly a two or three dimensional array.
+#'@export
+#'
+#' @examples
+#'## Create an example NetCDF file with a similar structure as used by CM
+#'## SAF. The file is created with the ncdf4 package.  Alternatively
+#'## example data can be freely downloaded here: <https://wui.cmsaf.eu/>
+#'
+#'library(ncdf4)
+#'
+#'## create some (non-realistic) example data
+#'
+#'lon <- seq(5, 15, 0.5)
+#'lat <- seq(45, 55, 0.5)
+#'time <- seq(as.Date("2000-01-01"), as.Date("2010-12-31"), "month")
+#'origin <- as.Date("1983-01-01 00:00:00")
+#'time <- as.numeric(difftime(time, origin, units = "hour"))
+#'data <- array(250:350, dim = c(21, 21, 132))
+#'
+#'## create example NetCDF
+#'
+#'x <- ncdim_def(name = "lon", units = "degrees_east", vals = lon)
+#'y <- ncdim_def(name = "lat", units = "degrees_north", vals = lat)
+#'t <- ncdim_def(name = "time", units = "hours since 1983-01-01 00:00:00",
+#'  vals = time, unlim = TRUE)
+#'var1 <- ncvar_def("SIS", "W m-2", list(x, y, t), -1, prec = "short")
+#'vars <- list(var1)
+#'ncnew <- nc_create("CMSAF_example_file.nc", vars)
+#'ncvar_put(ncnew, var1, data)
+#'ncatt_put(ncnew, "lon", "standard_name", "longitude", prec = "text")
+#'ncatt_put(ncnew, "lat", "standard_name", "latitude", prec = "text")
+#'nc_close(ncnew)
+#'
+#'## Load the data of variable 'SIS' of the example file into R.  To
+#'## access the data use e.g., my.data$SIS
+#'my.data <- read_ncvar("SIS", "CMSAF_example_file.nc")
+#'
+#'unlink("CMSAF_example_file.nc")
+read_ncvar <- function(var, infile, verbose = FALSE) {
+  check_variable(var)
+  check_infile(infile)
 
-  start.time <- Sys.time()
+  calc_time_start <- Sys.time()
 
-# check filename
-
-  filecheck <- checkfile(infile,"outfile")
-
-  if (filecheck[[1]]){
-    infile <- filecheck[[2]]   
-
-# define standard names of variables and dimensions
-
-   t_name <- "time"
-   t_standard_name = "time"
-   t_units = "undefined"
-   t_calendar = "undefined"
-
-   nb2_units = "1"
-
-   lat_name = "latitude"
-   lat_standard_name = "latitude"
-   lat_long_name = "latitude"
-   lat_units = "degrees_north"
-   lat_axis = "Y"
-
-   lon_name = "longitude"
-   lon_standard_name = "longitude"
-   lon_long_name = "longitude"
-   lon_units = "degrees_east"
-   lon_axis = "X"
-
-   v_standard_name = "undefined"
-   v_long_name = "undefined"
-   v_units = "undefined"
-   v__FillValue = "undefined"
-   v_missing_value = "undefined"
-
-   info = "Created with the CM SAF R Toolbox." 
-   var_prec="float"
-
-   att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
-   v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
-  
-# get file information
-
-  cat("get file information", "\n")
+  # get file information
+  file_data <- read_file(infile, var)
 
   id <- nc_open(infile)
+  if (!(var %in% c(TIME_BOUNDS_NAMES$DEFAULT, NB2_NAME)) && var %in% DIM_NAMES && var %in% c(names(id$var),names(id$dim))){
+    file_data$variable$name <- var
+  }
 
-  # get information about dimensions
+  # get details of file
+  result  <- ncvar_get(id, file_data$variable$name)
 
-  dimnames <- names(id$dim)
-
- # check standard_names of dimensions
-    for (i in 1:length(dimnames)){
-	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    ln <- ncatt_get(id,dimnames[i],"long_name")
-	    if (!is.null(sn$hasatt)){
-	      if (sn$hasatt){
-	        sn <- sn$value
-	        if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	        if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	        if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
-	      } else {
-	          if (ln$hasatt){
-	            ln <- ln$value
-	            if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	            if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	            if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
-	          }
-	       }
-	    }
-    }
-
-    for (i in 1:length(dimnames)){
-      if (t_name %in% dimnames){
-        attnames <- names(id$dim[[i]])
-        if ("units" %in% attnames){
-	        t_units <- ncatt_get(id,t_name,"units")$value}
-        if ("calendar" %in% attnames){
-	        t_calendar <- ncatt_get(id,t_name,"calendar")$value}
-      }
-    }
-
-  # get information about variables
-	
-  varnames <- names(id$var)
-  varnames <- append(varnames,dimnames)
-  var_default <- subset(varnames, !(varnames %in% c("time_bnds","nb2")))
-  
-  if (toupper(var) %in% toupper(var_default)){
-    var <- var_default[which(toupper(var)==toupper(var_default))]
-  } else {
-      cat("Variable ",var," not found.",sep="","\n")
-      var <- var_default[1]
-      cat("Variable ",var," will be used.",sep="","\n")
-    }
-
-   if (var %in% varnames){
-    for (i in 1:6){
-      att_dum <- ncatt_get(id,var,att_list[i])
-      if (att_dum$hasatt){
-	      assign(v_att_list[i],att_dum$value)}
-    }
-
-    # get details of file
-    data  <- ncvar_get(id,var)
-	  time1 <- ncvar_get(id,t_name)
-	  time_len <- length(time1)
-   }else{
-      nc_close(id)
-      stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
-
-	 if (v__FillValue == "undefined"){ 
-	     v__FillValue = v_missing_value}
-	 if (v_missing_value == "undefined"){ 
-	     v_missing_value = v__FillValue}
-
-  nc_close(id)   
-
-# extract time information
-
-  date.time <- get_time(t_units,time1)
+  # extract time information
+  date.time <- get_time(file_data$time_info$units, file_data$dimension_data$t)
 
   # create return list
-  if(length(dim(data))>=3 & "TIME" %in% toupper(dimnames)){
-    output <- list(data,date.time)
-    names(output) <- c(var,t_name)
+  if(length(dim(result)) >= 3 && any(TIME_NAMES %in% c(names(id$var),names(id$dim)))){
+    output <- list(result, date.time)
+    names(output) <- c(file_data$variable$name,TIME_NAMES$DEFAULT)
   } else {
-    output <- list(data)
-    names(output) <- c(var)
+    output <- list(result)
+    names(output) <- c(file_data$variable$name)
   }
-  
-  cat(paste("list with ",length(output)," element(s) returned",sep=""), "\n")
+  nc_close(id)
+
+  calc_time_end <- Sys.time()
+  if (verbose) message(get_processing_time_string(calc_time_start, calc_time_end))
   return(output)
-  
-  end.time <- Sys.time()
-  } # endif filecheck
 }

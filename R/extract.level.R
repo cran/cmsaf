@@ -1,294 +1,186 @@
-extract.level <-
-function(var,infile,outfile,level=1,nc34=3){
+#'Extract levels from 4-dimensional NetCDF files.
+#'
+#'This function extracts one or all levels of a 4-dimensional NetCDF file. A
+#'level is defined as a dimension, which does not correspond to longitude,
+#'latitude or time. The user can choose either one specific level (given by an
+#'integer) or all levels (level = "all").
+#'
+#'@param var Name of NetCDF variable (character).
+#'@param infile Filename of input NetCDF file. This may include the directory
+#'  (character).
+#'@param outfile Filename of output NetCDF file. This may include the directory
+#'  (character).
+#'@param level Number of level (default = 1) or all levels (level = "all")
+#'  (numeric or character).
+#'@param nc34 NetCDF version of output file. If \code{nc34 = 3} the output file will be
+#'  in NetCDFv3 format (numeric). Default output is NetCDFv4.
+#'@param overwrite logical; should existing output file be overwritten?
+#'@param verbose logical; if TRUE, progress messages are shown
+#'
+#'@return A NetCDF file including the selected level is written. In case of
+#'  level = "all" all levels are written in separate NetCDF files and outfile
+#'  names are expanded by "_level" and the level number.
+#'@export
+#'
+#'@family selection and removal functions
+#'
+#' @examples
+#'## Create an example NetCDF file with a similar structure as used by CM
+#'## SAF. The file is created with the ncdf4 package.  Alternatively
+#'## example data can be freely downloaded here: <https://wui.cmsaf.eu/>
+#'
+#'library(ncdf4)
+#'
+#'## create some (non-realistic) example data
+#'
+#'lon <- seq(5, 15, 0.5)
+#'lat <- seq(45, 55, 0.5)
+#'height <- seq(0, 1000, 100)
+#'time <- seq(as.Date("2000-01-01"), as.Date("2010-12-31"), "month")
+#'origin <- as.Date("1983-01-01 00:00:00")
+#'time <- as.numeric(difftime(time, origin, units = "hour"))
+#'data <- array(250:350, dim = c(21, 21, 11, 132))
+#'
+#'## create example NetCDF
+#'
+#'x <- ncdim_def(name = "lon", units = "degrees_east", vals = lon)
+#'y <- ncdim_def(name = "lat", units = "degrees_north", vals = lat)
+#'z <- ncdim_def(name = "height", units = "m", vals = height)
+#'t <- ncdim_def(name = "time", units = "hours since 1983-01-01 00:00:00",
+#'  vals = time, unlim = TRUE)
+#'var1 <- ncvar_def("SIS", "W m-2", list(x, y, z, t), -1, prec = "short")
+#'vars <- list(var1)
+#'ncnew <- nc_create("CMSAF_example_file.nc", vars)
+#'ncvar_put(ncnew, var1, data)
+#'ncatt_put(ncnew, "lon", "standard_name", "longitude", prec = "text")
+#'ncatt_put(ncnew, "lat", "standard_name", "latitude", prec = "text")
+#'ncatt_put(ncnew, "height", "standard_name", "height", prec = "text")
+#'nc_close(ncnew)
+#'
+#'## Extract the first level of the example CM SAF NetCDF file and write
+#'## the output to a new file.
+#'extract.level("SIS", "CMSAF_example_file.nc",
+#'  "CMSAF_example_file_extract.level1.nc")
+#'## Extract all levels of the example CM SAF NetCDF file and write the
+#'## output to a new file.
+#'extract.level("SIS", "CMSAF_example_file.nc",
+#'  "CMSAF_example_file_extract.level2.nc", "all")
+#'
+#'unlink(c("CMSAF_example_file.nc", "CMSAF_example_file_extract.level*.nc"))
+extract.level <- function(var, infile, outfile, level = 1, nc34 = 4,
+                          overwrite = FALSE, verbose = FALSE) {
+  check_variable(var)
 
-  start.time <- Sys.time()
+  check_infile(infile)
+  check_outfile(outfile)
 
-# check filename
+  outfile <- correct_filename(outfile)
+  check_overwrite(outfile, overwrite)
 
-  filecheck <- checkfile(infile,outfile)
+  check_nc_version(nc34)
 
-  if (filecheck[[1]]){
-    infile <- filecheck[[2]]
-    outfile <- filecheck[[3]]  
-
-# define standard names of variables and dimensions
-
-   t_name <- "time"
-   t_standard_name = "time"
-   t_units = "undefined"
-   t_calendar = "undefined"
-
-   nb2_units = "1"
-
-   lat_name = "latitude"
-   lat_standard_name = "latitude"
-   lat_long_name = "latitude"
-   lat_units = "degrees_north"
-   lat_axis = "Y"
-
-   lon_name = "longitude"
-   lon_standard_name = "longitude"
-   lon_long_name = "longitude"
-   lon_units = "degrees_east"
-   lon_axis = "X"
-
-   v_standard_name = "undefined"
-   v_long_name = "undefined"
-   v_units = "undefined"
-   v__FillValue = "undefined"
-   v_missing_value = "undefined"
-
-   info = "Created with the CM SAF R Toolbox." 
-   var_prec="float"
-
-   att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
-   v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
-  
-# get file information
-
-  cat("get file information", "\n")
-
-  id <- nc_open(infile)
+  calc_time_start <- Sys.time()
 
   # get information about dimensions and attributes
-  
-  dimnames   <- names(id$dim)
-  global_att <- ncatt_get(id,0)
+  file_data <- read_file(infile, var)
 
- # check standard_names of dimensions
-    for (i in 1:length(dimnames)){
-	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    ln <- ncatt_get(id,dimnames[i],"long_name")
-	    if (!is.null(sn$hasatt)){
-	      if (sn$hasatt){
-	        sn <- sn$value
-	        if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	        if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	        if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
-	      } else {
-	          if (ln$hasatt){
-	            ln <- ln$value
-	            if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	            if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	            if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
-	          }
-	       }
-	    }
-    }
+  nc_in <- nc_open(infile)
+    # check level
+    if (length(names(nc_in$dim)==4)){
+      start <- c(1,1,1,1)
+      count <- c(-1,-1,-1,-1)
+      # identify level dimension
+      dummy <- match(names(nc_in$dim),c(TIME_NAMES$DEFAULT,LON_NAMES$DEFAULT,LAT_NAMES$DEFAULT))
+      leveldim <- which(is.na(dummy))
+      levellen <- nc_in$dim[[leveldim]]$len
 
-  for (i in 1:length(dimnames)){
-    if (t_name %in% dimnames){
-      attnames <- names(id$dim[[i]])
-      if ("units" %in% attnames){
-	      t_units <- ncatt_get(id,t_name,"units")$value}
-      if ("calendar" %in% attnames){
-	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
-    }
-  }
-
-  # get information about variables
-	
-  varnames <- names(id$var)
-  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
-  
-  if (toupper(var) %in% toupper(var_default)){
-    var <- var_default[which(toupper(var)==toupper(var_default))]
-  } else {
-      cat("Variable ",var," not found.",sep="","\n")
-      var <- var_default[1]
-      cat("Variable ",var," will be used.",sep="","\n")
-    }
-  
-    # set variable precision 
-    varind   <- which(varnames==var)
-    varprec  <- NULL
-    varprec  <- id$var[[varind]]$prec
-    if (!is.null(varprec)){
-      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
-        (var_prec <- varprec)
+      if (level!="all"){
+        if (level>levellen){
+          stop(paste0("Dimension ",nc_in$dim[[leveldim]]$name," has length: ",levellen))
+        }
+        loop <- 1
+        start[leveldim] <- level
+        count[leveldim] <- 1
+        result1 <- ncvar_get(nc_in,file_data$variable$name,start=start,count=count)
+      } else {
+        loop <- levellen
+        result1 <- ncvar_get(nc_in,file_data$variable$name,start=start,count=count)
       }
     }
+  nc_close(nc_in)
 
-   if (var %in% varnames){
-    for (i in 1:6){
-      att_dum <- ncatt_get(id,var,att_list[i])
-      if (att_dum$hasatt){
-	      assign(v_att_list[i],att_dum$value)}
-    }
+  # create netcdf
+  nc_format <- get_nc_version(nc34)
+  cmsaf_info <- (paste0("cmsaf::extract.level for variable ",file_data$variable$name," and level ",level))
 
-    # get data of selected level
-	  lon <- ncvar_get(id,lon_name)
-	  lat <- ncvar_get(id,lat_name)
-	  time1 <- ncvar_get(id,t_name)
-	  time_len <- length(time1)
-	  if ("time_bnds" %in% varnames){
-	    tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
-	  }
-	
-	  # check level
-	  if (length(dimnames==4)){
-	    start <- c(1,1,1,1)
-	    count <- c(-1,-1,-1,-1)
-	    # identify level dimension
-	    dummy <- match(dimnames,c(t_name,lon_name,lat_name))
-	    leveldim <- which(is.na(dummy))
-	    levellen <- id$dim[[leveldim]]$len
-	  
-	    if (level!="all"){
-	      if (level>levellen){
-	        stop(cat(paste("Dimension ",id$dim[[leveldim]]$name," has length: ",levellen,sep="")),"\n")
-	      }
-	      loop <- 1
-	      start[3] <- level
-	      count[3] <- 1
-	      data <- ncvar_get(id,var,start=start,count=count)
-	    } else {
-	      loop <- levellen
-	      data <- ncvar_get(id,var,start=start,count=count)
-	    }
-	  }
+  ##### prepare output #####
+  global_att_list <- names(file_data$global_att)
+  global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(GLOBAL_ATT_DEFAULT)]
+  global_attributes <- file_data$global_att[global_att_list]
 
-  } else {
-      nc_close(id)
-      stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
-
-  if (v__FillValue == "undefined"){ 
-    v__FillValue = v_missing_value}
-  if (v_missing_value == "undefined"){ 
-    v_missing_value = v__FillValue}
-
-  nc_close(id)
-
-# create netcdf
-
-  cat("create netcdf", "\n")
-
-  # NetCDF format 3 or 4
-  
-  if (nc34==4){
-    nc_format <- as.logical(1)
-    compression = 4
-  } else {
-    nc_format <- as.logical(0)
-    compression = NA
-  }
-  
-    cmsaf_info <- (paste("cmsaf::extract.level for variable ",var," and level ",level,sep=""))
-  
-    # prepare global attributes
-    global_att_default <- c("institution","title","summary","id","creator_name",
-                            "creator_email","creator_url","creator_type","publisher_name",
-                            "publisher_email","publisher_url","publisher_type",
-                            "references","keywords_vocabulary","keywords","project",
-                            "standard_name_vocabulary","geospatial_lat_units",
-                            "geospatial_lon_units","geospatial_lat_resolution",
-                            "geospatial_lon_resolution","platform_vocabulary","platform",
-                            "instrument_vocabulary","instrument","date_created","product_version",
-                            "producer","version","dataset_version","source")
-    
-    global_att_list <- names(global_att)
-    
-    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(global_att_default)]
-    global_att <- global_att[global_att_list]
-    
-  for (i in 1:loop){
-    
+  for (i in seq_len(loop)){
     if (level!="all"){
       outfile1 <- outfile
-      data1 <- data
+      data1 <- result1
     } else {
-      outfile1 <- paste(strsplit(outfile,split=".nc"),"_level",i,".nc",sep="")
-      z <- which(dim(data)==levellen)
-      if (z==3&length(dim(data))==3){data1 <- data[,,i]}
-      if (z==3&length(dim(data))==4){data1 <- data[,,i,]}
+      outfile1 <- paste0(strsplit(outfile,split=".nc"),"_level",i,".nc")
+      if (length(dim(result1))==3){
+        data1 <- switch(leveldim,
+               result1[i,,],
+               result1[,i,],
+               result1[,,i]
+               )
+      }else if (length(dim(result1))==4){
+          data1 <- switch(leveldim,
+                          result1[i,,,],
+                          result1[,i,,],
+                          result1[,,i,],
+                          result1[,,,i]
+          )
+          }
     }
 
-    if (length(time1)==1){
-      dummy <- array(NA,dim=c(dim(data1)[1],dim(data1)[2],1))
-      dummy[,,1] <- data1
-      data1 <- dummy
+    # if (length(time1)==1){
+    #   dummy <- array(NA,dim=c(dim(data1)[1],dim(data1)[2],1))
+    #   dummy[,,1] <- data1
+    #   data1 <- dummy
+    # }
+
+    data1[is.na(data1)] <- file_data$variable$attributes$missing_value
+    result <- data1
+
+    if(file_data$time_info$has_time_bnds){
+      time_bnds <- get_time_bounds_from_file(infile)
+      vars_data <- list(result = result, time_bounds = time_bnds)
+    }else{
+      vars_data <- list(result = result)
     }
 
-    data1[is.na(data1)] <- v_missing_value
-    nb2 <- c(0,1)
+    dims <- define_dims(file_data$grid$is_regular,
+                        file_data$dimension_data$x,
+                        file_data$dimension_data$y,
+                        file_data$dimension_data$t,
+                        NB2,
+                        file_data$time_info$units,
+                        with_time_bnds = file_data$time_info$has_time_bnds)
 
-    x <- ncdim_def(name="lon",units=lon_units,vals=lon)
-    y <- ncdim_def(name="lat",units=lat_units,vals=lat)
-    t <- ncdim_def(name="time",units=t_units,vals=time1,unlim=TRUE)
-    if ("time_bnds" %in% varnames){
-      tb <- ncdim_def(name="nb2",units=nb2_units,vals=nb2)
-    }
+    vars <- define_vars(file_data$variable, dims, nc_format$compression, with_time_bnds = file_data$time_info$has_time_bnds)
 
-    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),missval=v_missing_value,
-                      prec=var_prec,compression=compression)
-
-    if ("time_bnds" %in% varnames){
-      var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
-      vars <- list(var1,var2)
-      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
-
-      ncvar_put(ncnew,var1,data1)
-      ncvar_put(ncnew,var2,tbnds1)
-
-      ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
-      ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
-
-      ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
-      ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
-      ncatt_put(ncnew,"time","bounds","time_bnds",prec="text")
-
-      ncatt_put(ncnew,"lon","standard_name",lon_standard_name,prec="text")
-      ncatt_put(ncnew,"lon","long_name",lon_long_name,prec="text")
-      ncatt_put(ncnew,"lon","axis",lon_axis,prec="text")
-
-      ncatt_put(ncnew,"lat","standard_name",lat_standard_name,prec="text")
-      ncatt_put(ncnew,"lat","long_name",lat_long_name,prec="text")
-      ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
-
-      ncatt_put(ncnew,0,"Info",info,prec="text")
-      
-      if (length(global_att_list)>0){
-        for (iglob in 1:length(global_att_list)){
-          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
-        }
-      }
-
-    } else {
-      vars <- list(var1)
-      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
-
-      ncvar_put(ncnew,var1,data1)
-
-      ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
-      ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
-
-      ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
-      ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
-
-      ncatt_put(ncnew,"lon","standard_name",lon_standard_name,prec="text")
-      ncatt_put(ncnew,"lon","long_name",lon_long_name,prec="text")
-      ncatt_put(ncnew,"lon","axis",lon_axis,prec="text")
-
-      ncatt_put(ncnew,"lat","standard_name",lat_standard_name,prec="text")
-      ncatt_put(ncnew,"lat","long_name",lat_long_name,prec="text")
-      ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
-
-      ncatt_put(ncnew,0,"Info",info,prec="text")
-      
-      if (length(global_att_list)>0){
-        for (iglob in 1:length(global_att_list)){
-          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
-        }
-      }
-    }
-
-    nc_close(ncnew)
-    
+    write_output_file(
+      outfile1,
+      nc_format$force_v4,
+      vars,
+      vars_data,
+      file_data$variable$name,
+      file_data$grid$vars, file_data$grid$vars_data,
+      cmsaf_info,
+      file_data$time_info$calendar,
+      file_data$variable$attributes,
+      global_attributes,
+      with_time_bnds = file_data$time_info$has_time_bnds
+    )
   } # end for loop
 
-  end.time <- Sys.time()
-  cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s", sep="","\n")
-  } # endif filecheck
+  calc_time_end <- Sys.time()
+  if (verbose) message(get_processing_time_string(calc_time_start, calc_time_end))
 }

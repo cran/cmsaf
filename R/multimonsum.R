@@ -1,269 +1,178 @@
-multimonsum <-
-function(var,month=c(1),infile,outfile,nc34=3){
+#'Determine multi-monthly sums
+#'
+#'The function determines multi-monthly sums from data of a single CM SAF NetCDF
+#'input file. The months are given as a vector of integers from 1 to 12. This
+#'allows sums of user-defined seasons.
+#'
+#'@param var Name of NetCDF variable (character).
+#'@param month  Months which should be averaged, in form of a comma separated
+#'  vector of integer values from 1 to 12 (integer).
+#'@param infile Filename of input NetCDF file. This may include the directory
+#'  (character).
+#'@param outfile Filename of output NetCDF file. This may include the directory
+#'  (character).
+#'@param nc34 NetCDF version of output file. If \code{nc34 = 3} the output file will be
+#'  in NetCDFv3 format (numeric). Default output is NetCDFv4.
+#'@param overwrite logical; should existing output file be overwritten?
+#'@param verbose logical; if TRUE, progress messages are shown
+#'
+#'@return A NetCDF file including a time series of multi-monthly sums is written.
+#'@export
+#'
+#'@family monthly statistics
+#'
+#' @examples
+#'## Create an example NetCDF file with a similar structure as used by CM
+#'## SAF. The file is created with the ncdf4 package.  Alternatively
+#'## example data can be freely downloaded here: <https://wui.cmsaf.eu/>
+#'
+#'library(ncdf4)
+#'
+#'## create some (non-realistic) example data
+#'
+#'lon <- seq(5, 15, 0.5)
+#'lat <- seq(45, 55, 0.5)
+#'time <- seq(as.Date("2000-01-01"), as.Date("2010-12-31"), "month")
+#'origin <- as.Date("1983-01-01 00:00:00")
+#'time <- as.numeric(difftime(time, origin, units = "hour"))
+#'data <- array(0:150, dim = c(21, 21, 132))
+#'
+#'## create example NetCDF
+#'
+#'x <- ncdim_def(name = "lon", units = "degrees_east", vals = lon)
+#'y <- ncdim_def(name = "lat", units = "degrees_north", vals = lat)
+#'t <- ncdim_def(name = "time", units = "hours since 1983-01-01 00:00:00",
+#'  vals = time, unlim = TRUE)
+#'var1 <- ncvar_def("rain", "mm", list(x, y, t), -1, prec = "short")
+#'vars <- list(var1)
+#'ncnew <- nc_create("CMSAF_example_file.nc", vars)
+#'ncvar_put(ncnew, var1, data)
+#'ncatt_put(ncnew, "lon", "standard_name", "longitude", prec = "text")
+#'ncatt_put(ncnew, "lat", "standard_name", "latitude", prec = "text")
+#'nc_close(ncnew)
+#'
+#'## Determine the sum of the monsoon seas from June to September of the
+#'## example CM SAF NetCDF file and write the output to a new file.
+#'multimonsum("rain", c(6, 7, 8, 9), "CMSAF_example_file.nc",
+#'  "CMSAF_example_file_multimonsum.nc")
+#'
+#'unlink(c("CMSAF_example_file.nc", "CMSAF_example_file_multimonsum.nc"))
+multimonsum <- function(var, month = c(1), infile, outfile, nc34 = 4,
+                        overwrite = FALSE, verbose = FALSE) {
+  calc_time_start <- Sys.time()
 
-  start.time <- Sys.time()
+  check_variable(var)
+  check_infile(infile)
+  check_outfile(outfile)
+  outfile <- correct_filename(outfile)
+  check_overwrite(outfile, overwrite)
+  check_nc_version(nc34)
 
-# check filename
+  ##### extract data from file #####
+  file_data <- read_file(infile, var)
+  file_data$variable$prec <- "float"
 
-  filecheck <- checkfile(infile,outfile)
+  date_time <- get_date_time(file_data$dimension_data$t, file_data$time_info$units)
+  months_all <- date_time$months
+  months_unique <- sort(unique(months_all))
+  years_all <- date_time$years
+  years_unique <- sort(unique(years_all))
 
-  if (filecheck[[1]]){
-    infile <- filecheck[[2]]
-    outfile <- filecheck[[3]]  
+  nmonsums <- length(years_unique)*length(months_unique)
+  mul <- months_all * years_all
 
-# define standard names of variables and dimensions
-
-   t_name <- "time"
-   t_standard_name = "time"
-   t_units = "undefined"
-   t_calendar = "undefined"
-
-   nb2_units = "1"
-
-   lat_name = "latitude"
-   lat_standard_name = "latitude"
-   lat_long_name = "latitude"
-   lat_units = "degrees_north"
-   lat_axis = "Y"
-
-   lon_name = "longitude"
-   lon_standard_name = "longitude"
-   lon_long_name = "longitude"
-   lon_units = "degrees_east"
-   lon_axis = "X"
-
-   v_standard_name = "undefined"
-   v_long_name = "undefined"
-   v_units = "undefined"
-   v__FillValue = "undefined"
-   v_missing_value = "undefined"
-
-   info = "Created with the CM SAF R Toolbox." 
-   var_prec="float"
-
-   att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
-   v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
-  
-# get file information
-
-  cat("get file information", "\n")
-
-  id <- nc_open(infile)
-
-  # get information about dimensions and attributes
-  
-  dimnames   <- names(id$dim)
-  global_att <- ncatt_get(id,0)
-
- # check standard_names of dimensions
-    for (i in 1:length(dimnames)){
-	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    ln <- ncatt_get(id,dimnames[i],"long_name")
-	    if (!is.null(sn$hasatt)){
-	      if (sn$hasatt){
-	        sn <- sn$value
-	        if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	        if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	        if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
-	      } else {
-	          if (ln$hasatt){
-	            ln <- ln$value
-	            if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	            if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	            if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
-	          }
-	       }
-	    }
-    }
-
-  for (i in 1:length(dimnames)){
-    if (t_name %in% dimnames){
-      attnames <- names(id$dim[[i]])
-      if ("units" %in% attnames){
-	      t_units <- ncatt_get(id,t_name,"units")$value}
-      if ("calendar" %in% attnames){
-	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
-    }
+  if (!(length(month)==sum(month %in% months_all))){
+    stop(paste0("No match. Months are: ",months_all))
   }
 
-  # get information about variables
-	
-  varnames <- names(id$var)
-  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
-  
-  if (toupper(var) %in% toupper(var_default)){
-    var <- var_default[which(toupper(var)==toupper(var_default))]
-  } else {
-      cat("Variable ",var," not found.",sep="","\n")
-      var <- var_default[1]
-      cat("Variable ",var," will be used.",sep="","\n")
-    }
+  seas <- array(NA,dim=c(length(month),length(years_unique)))
 
-   if (var %in% varnames){
-    for (i in 1:6){
-      att_dum <- ncatt_get(id,var,att_list[i])
-      if (att_dum$hasatt){
-	      assign(v_att_list[i],att_dum$value)}
-    }
-
-    # get details of file
-
-	  lon <- ncvar_get(id,lon_name)
-	  lat <- ncvar_get(id,lat_name)
-	  time1 <- ncvar_get(id,t_name)
-	  time_len <- length(time1)
-   }else{
-      nc_close(id)
-      stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
-
-  if (v__FillValue == "undefined"){ 
-    v__FillValue = v_missing_value}
-  if (v_missing_value == "undefined"){ 
-    v_missing_value = v__FillValue}
-
-  nc_close(id)   
-
-# extract time information
-
-  date.time <- as.Date(get_time(t_units,time1))
-  a <- as.character(date.time)
-  b <- strsplit(a,"-")
-  d <- unlist(b)
-  dummy <- length(d)
-  dum <- seq(2,dummy,3)
-  mon <- as.integer(d[dum])
-  dum <- seq(1,dummy,3)
-  year <- as.integer(d[dum])
-  yl <- as.integer(levels(factor(year)))
-  ml <- as.integer(levels(factor(mon)))
-  nmonsums <- length(yl)*length(ml)
-  mul <- year*mon
-  dummy_vec <- c(1:length(mon))
-
-  if (length(month)==sum(month %in% mon)){
-
-  seas <- array(NA,dim=c(length(month),length(yl)))
-
-  for (i in 1:length(yl)){
-    for (j in 1:length(month)){
-    	dum <- which(mon==month[j]&year==yl[i])
-    	if (length(dum)==0)(dum <- NA)
-	    seas[j,i] <- dum
-    }
-  }
-
-  target <- array(NA,dim=c(length(lon),length(lat),1))
-  tbnds <- array(NA, dim=c(2,1))
-
-# create netcdf
-
-  cat("create netcdf", "\n")
-
-  # NetCDF format 3 or 4
-  
-  if (nc34==4){
-    nc_format <- as.logical(1)
-    compression = 4
-  } else {
-    nc_format <- as.logical(0)
-    compression = NA
-  }
-
-    dummy_month <- paste(month,collapse=", ")
-    cmsaf_info <- (paste("cmsaf::multimonsum of month(s): ",dummy_month," for variable ",var,sep=""))
-    target[is.na(target)] <- v_missing_value
-    nb2 <- c(0,1)
-    
-    # prepare global attributes
-    global_att_default <- c("institution","title","summary","id","creator_name",
-                            "creator_email","creator_url","creator_type","publisher_name",
-                            "publisher_email","publisher_url","publisher_type",
-                            "references","keywords_vocabulary","keywords","project",
-                            "standard_name_vocabulary","geospatial_lat_units",
-                            "geospatial_lon_units","geospatial_lat_resolution",
-                            "geospatial_lon_resolution","platform_vocabulary","platform",
-                            "instrument_vocabulary","instrument","date_created","product_version",
-                            "producer","version","dataset_version","source")
-    
-    global_att_list <- names(global_att)
-    
-    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(global_att_default)]
-    global_att <- global_att[global_att_list]
-
-    x <- ncdim_def(name="lon",units=lon_units,vals=lon)
-    y <- ncdim_def(name="lat",units=lat_units,vals=lat)
-    t <- ncdim_def(name="time",units=t_units,vals=0,unlim=TRUE)
-    tb <- ncdim_def(name="nb2",units="1",vals=nb2)
-
-    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),missval=v_missing_value,
-                      prec=var_prec,compression=compression)
-    var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
-    vars <- list(var1,var2)
-    ncnew <- nc_create(outfile,vars,force_v4=nc_format)
-
-    ncvar_put(ncnew,var1,target)
-    ncvar_put(ncnew,var2,tbnds)
-
-    ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
-    ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-    ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
-
-    ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
-    ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
-    ncatt_put(ncnew,"time","bounds","time_bnds",prec="text")
-
-    ncatt_put(ncnew,"lon","standard_name",lon_standard_name,prec="text")
-    ncatt_put(ncnew,"lon","long_name",lon_long_name,prec="text")
-    ncatt_put(ncnew,"lon","axis",lon_axis,prec="text")
-
-    ncatt_put(ncnew,"lat","standard_name",lat_standard_name,prec="text")
-    ncatt_put(ncnew,"lat","long_name",lat_long_name,prec="text")
-    ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
-
-    ncatt_put(ncnew,0,"Info",info,prec="text")
-    
-    if (length(global_att_list)>0){
-      for (iglob in 1:length(global_att_list)){
-        ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+  for (i in seq_along(years_unique)){
+    for (j in seq_along(month)){
+      dum <- which(months_all==month[j]&years_all==years_unique[i])
+      if (length(dum)==0){
+        dum <- NA
       }
+      seas[j,i] <- dum
     }
+  }
 
-  # get data and calculate seasonal means
+  # Use placeholder for result so that it can be calculated later without the
+  # need to have all input data in memory concurrently.
+  data_placeholder <- array(
+    file_data$variable$attributes$missing_value,
+    dim = c(length(file_data$dimension_data$x),
+            length(file_data$dimension_data$y),
+            1)
+  )
+  time_bnds <- get_time_bounds_1(
+    file_data$dimension_data$t
+  )
+  vars_data <- list(result = data_placeholder, time_bounds = time_bnds)
 
-  id <- nc_open(infile)
-  dum_dat <- array(NA,dim=c(length(lon),length(lat),length(month)))
+  nc_format <- get_nc_version(nc34)
+  cmsaf_info <- paste0("cmsaf::multimonsum of month(s): ", paste(month,collapse=", ")," for variable ", file_data$variable$name)
+
+  ##### prepare output #####
+  global_att_list <- names(file_data$global_att)
+  global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(GLOBAL_ATT_DEFAULT)]
+  global_attributes <- file_data$global_att[global_att_list]
+
+  dims <- define_dims(file_data$grid$is_regular,
+                      file_data$dimension_data$x,
+                      file_data$dimension_data$y,
+                      0,
+                      NB2,
+                      file_data$time_info$units)
+
+  vars <- define_vars(file_data$variable, dims, nc_format$compression)
+
+  write_output_file(
+    outfile,
+    nc_format$force_v4,
+    vars,
+    vars_data,
+    file_data$variable$name,
+    file_data$grid$vars, file_data$grid$vars_data,
+    cmsaf_info,
+    file_data$time_info$calendar,
+    file_data$variable$attributes,
+    global_attributes
+  )
+
+  ##### calculate and write result #####
+  nc_out <- nc_open(outfile, write = TRUE)
+  dummy_vec <- seq_along(months_all)
+  dum_dat <- array(NA,dim=c(length(file_data$dimension_data$x),length(file_data$dimension_data$y),length(month)))
+  nc_in <- nc_open(infile)
   count <- 1
-  for (i in 1:length(yl)){
+  for (i in seq_along(years_unique)){
     mon_dummy <- NULL
-    for (j in 1:length(month)){
-      dum <- which(mon==month[j]&year==yl[i])
+    for (j in seq_along(month)){
+      dum <- which(months_all==month[j]&years_all==years_unique[i])
       if(length(dum)>0){
         mon_dummy <- append(mon_dummy,dum)
-        dumdum_dat <- ncvar_get(id,var,start=c(1,1,dum[1]),count=c(-1,-1,length(dum)),collapse_degen=FALSE)
-        dumdum_dat <- rowSums(dumdum_dat,dims=2,na.rm=T)
+        dumdum_dat <- ncvar_get(nc_in,file_data$variable$name,start=c(1,1,dum[1]),count=c(-1,-1,length(dum)),collapse_degen=FALSE)
+        dumdum_dat <- rowSums(dumdum_dat,dims=2,na.rm=TRUE)
         dum_dat[,,j] <- dumdum_dat
       }
     }
     if(sum(!is.na(dum_dat))!=0){
-      cat("\r","apply multi monthly sum ",count," of ",(length(yl)),sep="")
-      sum_data <- rowSums(dum_dat,dims=2,na.rm=T)*ifelse(rowSums(is.na(dum_dat),dims=2) == dim(dum_dat)[3], NA, 1)
-      sum_data[is.na(sum_data)] <- v_missing_value
-      tdum <- min(time1[mon_dummy])
-      tbnds[1,1] <- min(time1[mon_dummy])
-      tbnds[2,1] <- max(time1[mon_dummy])
-      ncvar_put(ncnew,var1,sum_data,start=c(1,1,count),count=c(-1,-1,1))
-      ncvar_put(ncnew,t,tdum,start=count,count=1)
-      ncvar_put(ncnew,var2,tbnds,start=c(1,count),count=c(-1,1))
+      sum_data <- rowSums(dum_dat,dims=2,na.rm=TRUE)*ifelse(rowSums(is.na(dum_dat),dims=2) == dim(dum_dat)[3], NA, 1)
+      sum_data[is.na(sum_data)] <- file_data$variable$attributes$missing_value
+      tdum <- min(file_data$dimension_data$t[mon_dummy])
+      time_bnds[1,1] <- min(file_data$dimension_data$t[mon_dummy])
+      time_bnds[2,1] <- max(file_data$dimension_data$t[mon_dummy])
+      ncvar_put(nc_out,vars[[1]],sum_data,start=c(1,1,count),count=c(-1,-1,1))
+      ncvar_put(nc_out,dims$t,tdum,start=count,count=1)
+      ncvar_put(nc_out,vars[[2]],time_bnds,start=c(1,count),count=c(-1,1))
       count <- count+1
     }
   }
- nc_close(id)
+  nc_close(nc_out)
+  nc_close(nc_in)
 
- nc_close(ncnew)
-
- } else { cat("No match. Months are:",mon, "\n")}
-
-  end.time <- Sys.time()
-  cat("\n","processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s",sep="", "\n")
-  } # endif filecheck
+  calc_time_end <- Sys.time()
+  if (verbose) message(get_processing_time_string(calc_time_start, calc_time_end))
 }
+

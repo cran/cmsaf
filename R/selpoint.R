@@ -1,318 +1,249 @@
-selpoint <-
-function(var,infile,outfile,lon1=0,lat1=0,format="nc",nc34=3){
+#'Extract data at a given point.
+#'
+#'This function extracts all data at a given point. A point is given by a pair
+#'of longitude and latitude coordinates. The function will find the closest grid
+#'point to the given coordinates and extracts the data for this point. The
+#'output-file can be optional in NetCDF or csv. The outfile is checked for the
+#'correct file extension.
+#'
+#'@param var Name of NetCDF variable (character).
+#'@param infile Filename of input NetCDF file. This may include the directory
+#'  (character).
+#'@param outfile Filename of output NetCDF file. This may include the directory
+#'  (character).
+#'@param lon1 Longitude of desired point (numeric).
+#'@param lat1 Latitude of desired point (numeric).
+#'@param format Intended output format. Options are \code{nc} or \code{csv}. Default is
+#'  \code{nc} (character).
+#'@param nc34 NetCDF version of output file. If \code{nc34 = 3} the output file will be
+#'  in NetCDFv3 format (numeric). Default output is NetCDFv4.
+#'@param overwrite logical; should existing output file be overwritten?
+#'@param verbose logical; if TRUE, progress messages are shown
+#'
+#'@return A NetCDF or csv file including the selected point is written. The
+#'  csv file is tested for use in Excel and includes two columns (Time and
+#'  Data), which are separated by ';'.
+#'@export
+#'
+#'@family selection and removal functions
+#'
+#' @examples
+#'## Create an example NetCDF file with a similar structure as used by CM
+#'## SAF. The file is created with the ncdf4 package.  Alternatively
+#'## example data can be freely downloaded here: <https://wui.cmsaf.eu/>
+#'
+#'library(ncdf4)
+#'
+#'## create some (non-realistic) example data
+#'
+#'lon <- seq(5, 15, 0.5)
+#'lat <- seq(45, 55, 0.5)
+#'time <- seq(as.Date("2000-01-01"), as.Date("2010-12-31"), "month")
+#'origin <- as.Date("1983-01-01 00:00:00")
+#'time <- as.numeric(difftime(time, origin, units = "hour"))
+#'data <- array(250:350, dim = c(21, 21, 132))
+#'
+#'## create example NetCDF
+#'
+#'x <- ncdim_def(name = "lon", units = "degrees_east", vals = lon)
+#'y <- ncdim_def(name = "lat", units = "degrees_north", vals = lat)
+#'t <- ncdim_def(name = "time", units = "hours since 1983-01-01 00:00:00",
+#'  vals = time, unlim = TRUE)
+#'var1 <- ncvar_def("SIS", "W m-2", list(x, y, t), -1, prec = "short")
+#'vars <- list(var1)
+#'ncnew <- nc_create("CMSAF_example_file.nc", vars)
+#'ncvar_put(ncnew, var1, data)
+#'ncatt_put(ncnew, "lon", "standard_name", "longitude", prec = "text")
+#'ncatt_put(ncnew, "lat", "standard_name", "latitude", prec = "text")
+#'nc_close(ncnew)
+#'
+#'## Select a point of the example CM SAF NetCDF file and write the output
+#'## to a csv-file.
+#'selpoint("SIS", "CMSAF_example_file.nc", "CMSAF_example_file_selpoint.nc",
+#'  8, 48, "csv")
+#'
+#'unlink(c("CMSAF_example_file.nc", "CMSAF_example_file_selpoint.nc.csv"))
+#TODO naming problem? (see example)
+selpoint <- function(var, infile, outfile, lon1 = 0, lat1 = 0, format = "nc",
+                     nc34 = 4, overwrite = FALSE, verbose = FALSE) {
+  check_variable(var)
 
-  start.time <- Sys.time()
+  check_infile(infile)
 
-# check filename
+  check_overwrite(outfile, overwrite)
 
-  filecheck <- checkfile(infile,outfile)
-
-  if (filecheck[[1]]){
-    infile <- filecheck[[2]]
-    outfile <- filecheck[[3]]    
-
-# define standard names of variables and dimensions
-
-   t_name <- "time"
-   t_standard_name = "time"
-   t_units = "undefined"
-   t_calendar = "undefined"
-
-   nb2_units = "1"
-
-   lat_name = "latitude"
-   lat_standard_name = "latitude"
-   lat_long_name = "latitude"
-   lat_units = "degrees_north"
-   lat_axis = "Y"
-
-   lon_name = "longitude"
-   lon_standard_name = "longitude"
-   lon_long_name = "longitude"
-   lon_units = "degrees_east"
-   lon_axis = "X"
-
-   v_standard_name = "undefined"
-   v_long_name = "undefined"
-   v_units = "undefined"
-   v__FillValue = "undefined"
-   v_missing_value = "undefined"
-
-   info = "Created with the CM SAF R Toolbox." 
-   var_prec="float"
-
-   att_list <- c("standard_name","long_name","units","_FillValue","missing_value","calendar")
-   v_att_list <- c("v_standard_name","v_long_name","v_units","v__FillValue","v_missing_value","v_calendar")
-  
-# get file information
-
-  cat("get file information", "\n")
-
-  id <- nc_open(infile)
+  check_nc_version(nc34)
+  check_format(format)
+  calc_time_start <- Sys.time()
 
   # get information about dimensions and attributes
-  
-  dimnames   <- names(id$dim)
-  global_att <- ncatt_get(id,0)
-
- # check standard_names of dimensions
-    for (i in 1:length(dimnames)){
-	    sn <- ncatt_get(id,dimnames[i],"standard_name")
-	    ln <- ncatt_get(id,dimnames[i],"long_name")
-	    if (!is.null(sn$hasatt)){
-	      if (sn$hasatt){
-	        sn <- sn$value
-	        if (sn %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	        if (sn %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	        if (sn=="time"|sn=="Time")(t_name <- dimnames[i])
-	      } else {
-	          if (ln$hasatt){
-	            ln <- ln$value
-	            if (ln %in% c("longitude","Longitude","Lon","lon"))(lon_name <- dimnames[i])
-	            if (ln %in% c("latitude","Latitude","Lat","lat"))(lat_name <- dimnames[i])
-	            if (ln=="time"|ln=="Time")(t_name <- dimnames[i])
-	          }
-	       }
-	    }
-    }
-
-  for (i in 1:length(dimnames)){
-    if (t_name %in% dimnames){
-      attnames <- names(id$dim[[i]])
-      if ("units" %in% attnames){
-	      t_units <- ncatt_get(id,t_name,"units")$value}
-      if ("calendar" %in% attnames){
-	      t_calendar <- ncatt_get(id,t_name,"calendar")$value}
-    }
+  file_data <- read_file(infile, var)
+  if (file_data$time_info$has_time_bnds) {
+    time_bnds <- get_time_bounds_from_file(infile)
   }
 
-  # get information about variables
-	
-  varnames <- names(id$var)
-  var_default <- subset(varnames, !(varnames %in% c("lat","lon","time_bnds","nb2","time")))
-  
-  if (toupper(var) %in% toupper(var_default)){
-    var <- var_default[which(toupper(var)==toupper(var_default))]
-  } else {
-      cat("Variable ",var," not found.",sep="","\n")
-      var <- var_default[1]
-      cat("Variable ",var," will be used.",sep="","\n")
-    }
-  
-    # set variable precision 
-    varind   <- which(varnames==var)
-    varprec  <- NULL
-    varprec  <- id$var[[varind]]$prec
-    if (!is.null(varprec)){
-      if (varprec %in% c("short", "float", "double", "integer", "char", "byte")){
-        (var_prec <- varprec)
-      }
-    }
-
-   if (var %in% varnames){
-    for (i in 1:6){
-      att_dum <- ncatt_get(id,var,att_list[i])
-      if (att_dum$hasatt){
-	      assign(v_att_list[i],att_dum$value)}
-    }
-   }else{
-      nc_close(id)
-      stop(cat(paste("Variable ",var," not found! File contains: ",varnames,sep="")),"\n")}
-
-    # get data of first file
-
-	  lon <- ncvar_get(id,lon_name)
-	  lat <- ncvar_get(id,lat_name)
-	  time1 <- ncvar_get(id,t_name)
-	  time_len <- length(time1)
-	  if ("time_bnds" %in% varnames){
-	    tbnds1 <- ncvar_get(id,"time_bnds",collapse_degen=FALSE)
-	  }
-	
-    # find closest point to target coordinates using sp package
-
-	  cat("find closest point to target coordinates", "\n")
-	
-	  dlon <- abs(lon[1]-lon[2])
-	  dlat <- abs(lat[1]-lat[2])
-	
-	  lon_limit <- which(lon>=(lon1-dlon)&lon<=(lon1+dlon))  
-	  lat_limit <- which(lat>=(lat1-dlat)&lat<=(lat1+dlat)) 
-
-    if (any(lon_limit)&any(lat_limit)){
-  
-	    lon2 <- lon[lon_limit]
-	    lat2 <- lat[lat_limit]
-
-	    pos <- SpatialPoints(cbind(lon1,lat1), proj4string=CRS("+proj=longlat +datum=WGS84"))
-	    dum_dist <- 1000
-	    for (i in 1:length(lon2)){
-	      for (j in 1:length(lat2)){
-	        dist <- spDistsN1(pos, c(lon2[i],lat2[j]), longlat = FALSE)
-	          if (dist<=dum_dist){
-		          dum_dist <- dist
-		          dumi <- i
-		          dumj <- j
-	          }
-	      }
-	    }
-
-	    lon_limit <- which(lon==lon2[dumi])  
-	    lat_limit <- which(lat==lat2[dumj])
-    }
-
-   if (any(lon_limit)&any(lat_limit)){
-
-	  lon <- lon[lon_limit]
-	  lat <- lat[lat_limit]
-	
-	  if (var %in% varnames){
-	    data1 <- ncvar_get(id,var,start=c(lon_limit,lat_limit,1),count=c(1,1,-1))}
-
-    if (v__FillValue == "undefined"){ 
-      v__FillValue = v_missing_value}
-    if (v_missing_value == "undefined"){ 
-      v_missing_value = v__FillValue}
-
-  nc_close(id)
-  
-  if (length(time1)==1){
-    dummy <- array(NA,dim=c(1,1,1))
-    dummy[1,1,1] <- data1
-    data1 <- dummy
+  if (!(file_data$grid$is_regular || length(file_data$grid$vars))) {
+    stop("No lon/lat information found in file, please add by applying add_grid_info")
   }
-  
-# file output  
-  if(toupper(format)=="CSV")(format <- "csv")
-  if(format!="csv")(format <- "nc")
-  
-  if (format=="nc"){
 
-  # create netcdf
+  # find closest point to target coordinates using sp package
+  if (file_data$grid$is_regular) {
+    dlon <- abs(file_data$dimension_data$x[1] - file_data$dimension_data$x[2])
+    dlat <- abs(file_data$dimension_data$y[1] - file_data$dimension_data$y[2])
 
-  cat("create netcdf", "\n")  
+    lon_limit <- which(file_data$dimension_data$x >= (lon1 - dlon)
+                       & file_data$dimension_data$x <= (lon1 + dlon))
+    lat_limit <- which(file_data$dimension_data$y >= (lat1 - dlat)
+                       & file_data$dimension_data$y <= (lat1 + dlat))
 
-   # NetCDF format 3 or 4
-  
-  if (nc34==4){
-    nc_format <- as.logical(1)
-    compression = 4
-  } else {
-    nc_format <- as.logical(0)
-    compression = NA
-  }
- 
-    cmsaf_info <- (paste("cmsaf::selpoint for variable ",var,sep=""))
-    dum_fname <- unlist(strsplit(outfile,"\\."))
-    if (dum_fname[length(dum_fname)]!="nc")(outfile <- paste(outfile,".nc",sep=""))
-    data1[is.na(data1)] <- v_missing_value
-    nb2 <- c(0,1)
-    
-    # prepare global attributes
-    global_att_default <- c("institution","title","summary","id","creator_name",
-                            "creator_email","creator_url","creator_type","publisher_name",
-                            "publisher_email","publisher_url","publisher_type",
-                            "references","keywords_vocabulary","keywords","project",
-                            "standard_name_vocabulary","geospatial_lat_units",
-                            "geospatial_lon_units","geospatial_lat_resolution",
-                            "geospatial_lon_resolution","platform_vocabulary","platform",
-                            "instrument_vocabulary","instrument","date_created","product_version",
-                            "producer","version","dataset_version","source")
-    
-    global_att_list <- names(global_att)
-    
-    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(global_att_default)]
-    global_att <- global_att[global_att_list]
-
-    x <- ncdim_def(name="lon",units=lon_units,vals=lon)
-    y <- ncdim_def(name="lat",units=lat_units,vals=lat)
-    t <- ncdim_def(name="time",units=t_units,vals=time1,unlim=TRUE)
-    if ("time_bnds" %in% varnames){
-      tb <- ncdim_def(name="nb2",units=nb2_units,vals=nb2)
+    if (!(any(lon_limit) & any(lat_limit))) {
+      stop("Coordinates outside of the domain.")
     }
 
-    var1 <- ncvar_def(name=var,units=v_units,dim=list(x,y,t),missval=v_missing_value,
-                      prec=var_prec,compression=compression)
+    lon2 <- file_data$dimension_data$x[lon_limit]
+    lat2 <- file_data$dimension_data$y[lat_limit]
 
-    if ("time_bnds" %in% varnames){
-      var2 <- ncvar_def(name="time_bnds",units="1",dim=list(tb,t),prec="double")
-      vars <- list(var1,var2)
-      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
-
-      ncvar_put(ncnew,var1,data1)
-      ncvar_put(ncnew,var2,tbnds1)
-
-      ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
-      ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
-
-      ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
-      ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
-      ncatt_put(ncnew,"time","bounds","time_bnds",prec="text")
-
-      ncatt_put(ncnew,"lon","standard_name",lon_standard_name,prec="text")
-      ncatt_put(ncnew,"lon","long_name",lon_long_name,prec="text")
-      ncatt_put(ncnew,"lon","axis",lon_axis,prec="text")
-
-      ncatt_put(ncnew,"lat","standard_name",lat_standard_name,prec="text")
-      ncatt_put(ncnew,"lat","long_name",lat_long_name,prec="text")
-      ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
-
-      ncatt_put(ncnew,0,"Info",info,prec="text")
-      
-      if (length(global_att_list)>0){
-        for (iglob in 1:length(global_att_list)){
-          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
+    pos <- sp::SpatialPoints(cbind(lon1,lat1),
+                             proj4string = sp::CRS("+proj=longlat +datum=WGS84"))
+    dum_dist <- 1000
+    for (i in seq_along(lon2)) {
+      for (j in seq_along(lat2)) {
+        dist <- sp::spDistsN1(pos, c(lon2[i],lat2[j]), longlat = FALSE)
+        if (dist <= dum_dist) {
+          dum_dist <- dist
+          dumi <- i
+          dumj <- j
         }
       }
+    }
 
+    lon_limit <- which(file_data$dimension_data$x == lon2[dumi])
+    lat_limit <- which(file_data$dimension_data$y == lat2[dumj])
+
+
+    if (!(any(lon_limit) & any(lat_limit))) {
+      stop("Coordinates outside of the domain.")
+    }
+
+    file_data$dimension_data$x <- file_data$dimension_data$x[lon_limit]
+    file_data$dimension_data$y <- file_data$dimension_data$y[lat_limit]
+
+    id <- nc_open(infile)
+    result <- ncvar_get(id, file_data$variable$name,
+                        start = c(lon_limit, lat_limit, 1), count = c(1, 1, -1))
+    nc_close(id)
+  } else {
+    # sets range in which to look for a nearest neighbour, can be set in constants.R
+    dlon <- LON_RANGE
+    dlat <- LAT_RANGE
+
+    lon_limit <- which(file_data$grid$vars_data[[LON_NAMES$DEFAULT]]
+                       >= (lon1 - dlon)
+                       & file_data$grid$vars_data[[LON_NAMES$DEFAULT]]
+                       <= (lon1 + dlon), arr.ind = TRUE)
+    lat_limit <- which(file_data$grid$vars_data[[LAT_NAMES$DEFAULT]]
+                       >= (lat1 - dlat)
+                       & file_data$grid$vars_data[[LAT_NAMES$DEFAULT]]
+                       <= (lat1 + dlat), arr.ind = TRUE)
+
+    if (!(any(lon_limit) & any(lat_limit))) {
+      stop("Coordinates outside of the domain.")
+    }
+
+    lonlat_merge <- data.matrix(merge(lon_limit, lat_limit,
+                                      by.x = c("row","col"),
+                                      by.y = c("row","col"),
+                                      out.class = matrix))
+
+    dist <- sp::spDistsN1(cbind(file_data$grid$vars_data[[LON_NAMES$DEFAULT]][lonlat_merge],
+                                file_data$grid$vars_data[[LAT_NAMES$DEFAULT]][lonlat_merge]),
+                          c(lon1,lat1), longlat = FALSE)
+    mini <- which.min(dist)
+    nearest <- lonlat_merge[mini,]
+
+    x_nearest <- nearest[1]
+    y_nearest <- nearest[2]
+
+    file_data$dimension_data$x <- file_data$dimension_data$x[x_nearest]
+    file_data$dimension_data$y <- file_data$dimension_data$y[y_nearest]
+
+    file_data$grid$vars_data[[LON_NAMES$DEFAULT]] <- file_data$grid$vars_data[[LON_NAMES$DEFAULT]][x_nearest, y_nearest]
+    file_data$grid$vars_data[[LAT_NAMES$DEFAULT]] <- file_data$grid$vars_data[[LAT_NAMES$DEFAULT]][x_nearest, y_nearest]
+
+    id <- nc_open(infile)
+    result <- ncvar_get(id, file_data$variable$name,
+                        start = c(x_nearest, y_nearest, 1), count = c(1, 1, -1))
+    nc_close(id)
+  }
+
+  if (length(file_data$dimension_data$t) == 1) {
+    dummy <- array(NA, dim = c(1, 1, 1))
+    dummy[1, 1, 1] <- result
+    result <- dummy
+  }
+
+  # file output
+  format <- ifelse(toupper(format) == "CSV", "csv", "nc")
+
+  if (format == "nc") {
+    # create netcdf
+    nc_format <- get_nc_version(nc34)
+    cmsaf_info <- (paste0("cmsaf::selpoint for variable ", file_data$variable$name))
+
+    dum_fname <- unlist(strsplit(outfile,"\\."))
+    if (dum_fname[length(dum_fname)] != "nc")
+      outfile <- paste0(outfile,".nc")
+
+    result[is.na(result)] <- file_data$variable$attributes$missing_value
+
+    if (file_data$time_info$has_time_bnds) {
+      vars_data <- list(result = result, time_bounds = time_bnds)
     } else {
-      vars <- list(var1)
-      ncnew <- nc_create(outfile,vars,force_v4=nc_format)
-
-      ncvar_put(ncnew,var1,data1)
-
-      ncatt_put(ncnew,var,"standard_name",v_standard_name,prec="text")
-      ncatt_put(ncnew,var,"long_name",v_long_name,prec="text")
-      ncatt_put(ncnew,var,"cmsaf_info",cmsaf_info,prec="text")
-
-      ncatt_put(ncnew,"time","standard_name",t_standard_name,prec="text")
-      ncatt_put(ncnew,"time","calendar",t_calendar,prec="text")
-
-      ncatt_put(ncnew,"lon","standard_name",lon_standard_name,prec="text")
-      ncatt_put(ncnew,"lon","long_name",lon_long_name,prec="text")
-      ncatt_put(ncnew,"lon","axis",lon_axis,prec="text")
-
-      ncatt_put(ncnew,"lat","standard_name",lat_standard_name,prec="text")
-      ncatt_put(ncnew,"lat","long_name",lat_long_name,prec="text")
-      ncatt_put(ncnew,"lat","axis",lat_axis,prec="text")
-
-      ncatt_put(ncnew,0,"Info",info,prec="text")
-      
-      if (length(global_att_list)>0){
-        for (iglob in 1:length(global_att_list)){
-          ncatt_put(ncnew,0,global_att_list[iglob],global_att[iglob][[1]],prec="text")
-        }
-      }
+      vars_data <- list(result = result)
     }
 
-    nc_close(ncnew)
-  
-  } # end format="nc"
+    ##### prepare output #####
+    global_att_list <- names(file_data$global_att)
+    global_att_list <- global_att_list[toupper(global_att_list) %in% toupper(GLOBAL_ATT_DEFAULT)]
+    global_attributes <- file_data$global_att[global_att_list]
 
-  if (format=="csv"){
-    cat("create csv-file", "\n")
+    dims <- define_dims(file_data$grid$is_regular,
+                        file_data$dimension_data$x,
+                        file_data$dimension_data$y,
+                        file_data$dimension_data$t,
+                        NB2,
+                        file_data$time_info$units,
+                        with_time_bnds = file_data$time_info$has_time_bnds)
+
+    vars <- define_vars(file_data$variable, dims, nc_format$compression,
+                        with_time_bnds = file_data$time_info$has_time_bnds)
+
+    file_data$grid <- redefine_grid_vars(file_data$grid, dims, nc_format$compression, file_data$grid$vars_data)
+
+    write_output_file(
+      outfile,
+      nc_format$force_v4,
+      vars,
+      vars_data,
+      file_data$variable$name,
+      file_data$grid$vars, file_data$grid$vars_data,
+      cmsaf_info,
+      file_data$time_info$calendar,
+      file_data$variable$attributes,
+      global_attributes,
+      with_time_bnds = file_data$time_info$has_time_bnds
+    )
+
+  } else {
     dum_fname <- unlist(strsplit(outfile,"\\."))
-    if (dum_fname[length(dum_fname)]!="csv")(outfile <- paste(outfile,".csv",sep=""))
-    Data <- data1
-    Time <- get_time(t_units,time1)
-    dataframe <- data.frame(Time,Data)
-    write.table(dataframe,file=outfile,row.names=FALSE,sep=";")    
+    if (dum_fname[length(dum_fname)] != "csv")
+      outfile <- paste0(outfile, ".csv")
+    dataframe <- data.frame(get_time(file_data$time_info$units,
+                                     file_data$dimension_data$t), result)
+    utils::write.table(dataframe, file = outfile, row.names = FALSE, sep = ";")
   }
 
-  } else {cat("WARNING! Coordinates outside of the domain.", "\n")}
-
-  end.time <- Sys.time()
-  cat("processing time: ",round(as.numeric(end.time-start.time,units="secs"),digits=2)," s", sep="", "\n")
-  } # endif filecheck
+  calc_time_end <- Sys.time()
+  if (verbose)
+    message(get_processing_time_string(calc_time_start, calc_time_end))
 }
