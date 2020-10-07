@@ -5,9 +5,10 @@ config_filepath <- file.path(config_directory, "config.conf")
 grid_filepath <- file.path(config_directory, "myGrid.txt")
 
 # Is a local or remote session?
-isRunningLocally <- Sys.getenv('SHINY_PORT') == ""
+isRunningLocally <- Sys.getenv("SHINY_PORT") == ""
 # Test Remote
 # isRunningLocally <- FALSE
+remoteVolume <- c(data = "/srv/shiny-server/toolbox/data")
 
 operatorGroups <- c("Daily statistics",
                     "Monthly statistics",
@@ -17,7 +18,8 @@ operatorGroups <- c("Daily statistics",
                     "Spatial operators",
                     "Selection",
                     "Mathematical operators",
-                    "Data manipulation")
+                    "Data manipulation",
+                    "Climate Analysis")
 
 operators <- c()
 
@@ -26,7 +28,9 @@ operators[["Mathematical operators"]] <- c("Add constant to data" = "cmsaf.addc"
                                            "Multiply data with constant" = "cmsaf.mulc",
                                            "Subtract constant from data" = "cmsaf.subc",
                                            "Divide by days per month" = "divdpm",
-                                           "Multiply by days per month" = "muldpm")
+                                           "Multiply by days per month" = "muldpm",
+                                           "Add values from another file" = "cmsaf.add",
+                                           "Subtract values from another file" = "cmsaf.sub")
 
 operators[["Daily statistics"]] <- c("Diurnal range" = "dayrange",
                                      "Multi-year daily means" = "ydaymean")
@@ -71,31 +75,69 @@ operators[["Spatial operators"]] <- c("Spatial maximum" = "fldmax",
                                       "Weighted spatial mean" = "wfldmean")
 
 operators[["Selection"]] <- c("Remove time period" = "extract.period",
-                              "Select region by longitude and latitude" = "sellonlatbox",                              
+                              "Select region by longitude and latitude" = "sellonlatbox",
                               "Select data at given point" = "selpoint",
+                              "Select data at multiple points" = "selpoint.multi",
                               "Select list of months" = "selmon",
                               "Select time period" = "selperiod",
-                              "Select list of years" = "selyear")
+                              "Select list of years" = "selyear",
+                              "Select list of times" = "seltime")
 
 operators[["Data manipulation"]] <- c("Grid interpolation" = "remap")
 
-operatorOptions <- c("constant", "region", "point", "useFastTrend", "dateRange", "percentile", "months", "years", "times", "method")
+operators[["Climate Analysis"]] <- c(
+  "Absolute map" = "absolute_map",
+  "Anomaly map" = "anomaly_map",
+  "Climatology map" = "climatology_map",
+  "Fieldmean plot" = "fieldmean_plot",
+  "Fieldmean and anomaly map" = "fieldmean_and_anomaly_map"
+)
+
+operatorOptions <- c("constant",
+                     "region",
+                     "point",
+                     "useFastTrend",
+                     "dateRange",
+                     "percentile",
+                     "months",
+                     "years",
+                     "times",
+                     "method",
+                     "monitor_climate",
+                     "file_select")
 
 operatorOptionsDict <- c()
 operatorOptionsDict[["constant"]] <- c("cmsaf.addc",
                                        "cmsaf.divc",
                                        "cmsaf.mulc",
                                        "cmsaf.subc")
-operatorOptionsDict[["region"]] <- c("sellonlatbox")
-operatorOptionsDict[["point"]] <- c("selpoint")
+operatorOptionsDict[["region"]] <- c("sellonlatbox",
+                                     "absolute_map",
+                                     "anomaly_map",
+                                     "climatology_map",
+                                     "fieldmean_plot",
+                                     "fieldmean_and_anomaly_map")
+operatorOptionsDict[["point"]] <- c("selpoint", "selpoint.multi")
 operatorOptionsDict[["useFastTrend"]] <- c("trend")
 operatorOptionsDict[["dateRange"]] <- c("selperiod",
-                                     "extract.period")
+                                     "extract.period",
+                                     "absolute_map",
+                                     "anomaly_map",
+                                     "climatology_map",
+                                     "fieldmean_plot",
+                                     "fieldmean_and_anomaly_map")
 operatorOptionsDict[["percentile"]] <- c("timpctl")
-operatorOptionsDict[["months"]] <- c("selmon")
+operatorOptionsDict[["months"]] <- c("selmon", "multimonmean", "multimonsum")
 operatorOptionsDict[["years"]] <- c("selyear")
 operatorOptionsDict[["times"]] <- c("seltime")
 operatorOptionsDict[["method"]] <- c("remap")
+operatorOptionsDict[["monitor_climate"]] <- c("absolute_map",
+                                              "anomaly_map",
+                                              "climatology_map",
+                                              "fieldmean_plot",
+                                              "fieldmean_and_anomaly_map")
+operatorOptionsDict[["file_select"]] <- c("cmsaf.add", "cmsaf.sub")
+
 
 # default plot settings
 textsize    <- 1.2
@@ -109,6 +151,32 @@ ihsf      <- 0.1         # default image heigth scale factor
 grid_col  <- "cornsilk2" # default color of grid lines
 plot_grid <- TRUE        # plot grid lines (TRUE = yes, FALSE = no)
 
-# data of all countries
+# Load countriesHigh data.
+countriesHigh <- numeric(0)
 data(countriesHigh, package = "rworldxtra")
-world <- as(countriesHigh,"SpatialLines")
+
+# Valid countries  # TODO duplicated code in cmsafvis/data-raw/generate_internal_data.R
+# The package needs only three specific columns from the original data.
+codes <- countrycode::codelist[, c("iso3c", "country.name.en", "country.name.de")]
+# Apparently, in R 4.0.0 this returns a tibble which leads to an error because
+# tibble indexing works differently. See #873 and #894.
+codes <- as.data.frame(codes)
+
+# Clear out rows where iso3c is NA. Since we always use iso3c as 'origin',
+# we don't need these rows.
+codes <- codes[!is.na(codes["iso3c"]), ]
+
+# Only allow countries which are represented in countriesHigh
+ids <- codes[, "iso3c"] %in% countriesHigh$ISO3.1
+codes <- codes[ids, ]
+
+# Add data for special cases.
+codes <- rbind(
+  codes,
+  c("EUR", "Europe", "Europa"),
+  c("AFR", "Africa", "Afrika"),
+  c("TOT", "Totaldisk", "Gesamtausschnitt"),
+  c("S_A", "Selected Area", "Gewähltes Gebiet")
+)
+
+source("ColorspacePrivates.R")

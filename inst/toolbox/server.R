@@ -15,18 +15,18 @@ getTarList <- function(path_to_tar, tar_flag = 1, includeClaasAux = FALSE) {
     stop(paste0("No infile!", var))
   }
 
-  flist <- list.files(ordpath,substr(ordname,1,8), full.names = TRUE)
+  flist <- list.files(ordpath, substr(ordname, 1, 8), full.names = TRUE)
 
   tarlist <- NULL
   for (file in flist) {
     if (tar_flag == 1) {
-      tarlist <- append(tarlist,utils::untar(file, list = TRUE, tar = "internal"))
+      tarlist <- append(tarlist, utils::untar(file, list = TRUE, tar = "internal"))
     } else if (tar_flag == 2) {
-      tarlist <- append(tarlist,utils::untar(file, list = TRUE, tar = Sys.getenv("TAR")))
+      tarlist <- append(tarlist, utils::untar(file, list = TRUE, tar = Sys.getenv("TAR")))
     } else if (tar_flag == 3) {
-      tarlist <- append(tarlist,utils::untar(file, list = TRUE, tar = "C:/Rtools/bin/tar.exe"))
+      tarlist <- append(tarlist, utils::untar(file, list = TRUE, tar = "C:/Rtools/bin/tar.exe"))
     } else {
-      tarlist <- append(tarlist,utils::untar(file, list = TRUE))
+      tarlist <- append(tarlist, utils::untar(file, list = TRUE))
     }
   }
   # Exlude claas aux file if not wanted.
@@ -41,7 +41,7 @@ getTarList <- function(path_to_tar, tar_flag = 1, includeClaasAux = FALSE) {
 
 # Get CLAAS AUX FLAG
 getClaasAuxFlag <- function(tarlist) {
-  return( "CM_SAF_CLAAS2_L2_AUX.nc" %in% tarlist )
+  return("CM_SAF_CLAAS2_L2_AUX.nc" %in% tarlist)
 }
 
 # A function to extract ALL dates from a tar file.
@@ -53,7 +53,7 @@ extractAllDates <- function(path_to_tar, tar_flag) {
   timestep <- substr(tarlist[1], 4, 4)
 
   allDates <- as.character(substr(tarlist, 6, 13))
-  return( list(allDates = as.Date(allDates, "%Y%m%d"), timestep = timestep) )
+  return(list(allDates = as.Date(allDates, "%Y%m%d"), timestep = timestep))
 }
 
 # A function to extract start and end dates.
@@ -62,15 +62,15 @@ extractDateRange <- function(path_to_tar, tar_flag) {
   tmp <- extractAllDates(path_to_tar, tar_flag = tar_flag)
 
   # Select earliest date from the files.
-  date_from <- min( tmp$allDates )
-  date_to   <- max( tmp$allDates )
+  date_from <- min(tmp$allDates)
+  date_to   <- max(tmp$allDates)
 
   return(list(date_from = date_from, date_to = date_to, timestep = tmp$timestep))
 }
 
 # Function for OS-Independently choosing a directory
-choose_directory <- function(caption = 'Select data directory') {
-  if (exists('utils::choose.dir') || exists('choose.dir')) {
+choose_directory <- function(caption = "Select data directory") {
+  if (exists("utils::choose.dir") || exists("choose.dir")) {
     utils::choose.dir(caption = caption)
   } else {
     tcltk::tk_choose.dir(caption = caption)
@@ -80,8 +80,8 @@ choose_directory <- function(caption = 'Select data directory') {
 function(input, output, session) {
   #### Preparation and session set up ####
   # TODO: Setting the maximum request size. WARNING: NOT SURE WHAT'S A GOOD VALUE FOR THIS
-  # FOR NOW SETTING TO 1.5 GB, as this exceeds the largest test data.
-  options(shiny.maxRequestSize = 1500*1024^2)
+  # FOR NOW SETTING TO 2.5 GB, as this exceeds the largest test data.
+  options(shiny.maxRequestSize = 2500 * 1024^2)
 
   # Check if is running locally or on remote server
   # Variable can be found in global.R
@@ -107,7 +107,7 @@ function(input, output, session) {
 
   if (file.exists(config_filepath)) {
     # Does user dir exist in config file?
-    try( config_lines <- readLines(config_filepath) )
+    config_lines <- try(readLines(config_filepath))
   } else {
     config_lines <- ""
   }
@@ -119,225 +119,12 @@ function(input, output, session) {
 
   # 'Unique' session name
   sessionName <- paste0(session$user, format(Sys.time(), "%Y%m%d%H%M%S", tz = "UTC"))
-
-  # isRunningLocally can be found in global.R
-  # Find/Create user directory.
-  if (isRunningLocally) {
-    # Case of local host!
-
-    # Read lines of file.
-    for (line in config_lines) {
-      if (startsWith(line, "USRWDIR=")) {
-        if (nchar(line) > 8) {
-          userDir <<- substring(line, 9)
-          userDir <<- file.path(userDir, "output")
-          outputDir <<- userDir
-          # Create the output directory.
-          if (!dir.exists(userDir)) {
-            dir.create(userDir)
-          }
-          setwd(userDir)
-        }
-      }
-    }
-
-    # Set these values to one as soon as valid.
-    userDirValid <- reactiveVal(0)
-    resolutionValid <- reactiveVal(0)
-
-
-    # Set flags and counts for girdInfo and userDir
-    gridSupportFile <- file.path(config_directory, "myGrid.txt")
-    noGridInfoFlag <<- !file.exists(gridSupportFile)
-    noUserDirFlag <<- (nchar(userDir) == 0 || !dir.exists(userDir))
-
-    checkSum <<- 0
-    if (noUserDirFlag || noGridInfoFlag) {
-      # Check sum = 1 unless both files are missing
-      checkSum <<- 1
-      if (noUserDirFlag && noGridInfoFlag) {
-        checkSum <<- 2
-
-        showModal(modalDialog(
-          h4("Please select a directory where we can save your created output."),
-          br(),
-          actionButton("userDirButton", "Choose a user directory."),
-          verbatimTextOutput("selectedUserDirectory"),
-          hr(),
-          h4("Please specify a grid resolution."),
-          h5("The chosen value must be between 0.01 and 89.99.
-              Depending on your browser a comma or a point will be accepted as decimal seperator."),
-          numericInput("gridResolution", "Resolution", value = 0.05, step = 0.01, min = 0.01, max = 89.99),
-          title = "We need your help.",
-          size = "l",
-          footer = shinyjs::disabled(actionButton("Submit", "Submit"))
-        ))
-      } else if (noUserDirFlag) {
-        showModal(modalDialog(
-          h4("Please select a directory where we can save your created output."),
-          br(),
-          actionButton("userDirButton", "Choose a user directory."),
-          verbatimTextOutput("selectedUserDirectory"),
-          title = "We need your help.",
-          size = "l",
-          footer = shinyjs::disabled(actionButton("Submit", "Submit"))
-        ))
-      } else {
-        showModal(modalDialog(
-          h4("Please specify a grid resolution."),
-          h5("The chosen value must be between 0.01 and 89.99.
-              Depending on your browser a comma or a point will be accepted as decimal seperator."),
-          numericInput("gridResolution", "Resolution", value = 0.05, step = 0.01, min = 0.01, max = 89.99),
-          title = "We need your help.",
-          size = "l",
-          footer = shinyjs::disabled(actionButton("Submit", "Submit"))
-        ))
-      }
-    }
-  } else {
-    # Case of remote host!
-
-    # Remember the user directory and tear it down in destructor.
-    if (!dir.exists("output")) {
-      warning("Creating user directory at '", getwd(), "/output'.")
-      dir.create("output")
-    }
-    userDir   <<- file.path("output", sessionName)
-    outputDir <<- userDir
-
-    dirFlag <- FALSE
-    # If by any chance this directroy has existed give warning message.
-    if (dir.exists(userDir)) {
-      dirFlag <- TRUE
-      warning(paste0("User directory: ", userDir, " already exists. APP WILL STOP!"))
-    } else {
-      dir.create(userDir)
-    }
-  }
-
-  # Observing when user submits initial values for config and/or myGrid.txt file.
-  observeEvent(input$Submit, {
-    if (noUserDirFlag) {
-      # Overwrite config file (config filepath is found in global.R)
-      if (file.exists(config_filepath)) {
-        file.remove(config_filepath)
-      }
-      file.create(config_filepath)
-
-      # Save  for next session.
-      writeLines(paste0("USRWDIR=", userDir), config_filepath)
-
-      userDir   <<- file.path(userDir, "output")
-      outputDir <<- userDir
-      action_userDir_change(action_userDir_change() + 1)
-
-      if (!dir.exists(userDir)) {
-        dir.create(userDir)
-      }
-    }
-
-    if (noGridInfoFlag) {
-      file.create(gridSupportFile)
-
-      gridXsize <- 360/input$gridResolution + 1
-      gridYsize <- 180/input$gridResolution + 1
-
-      gridLines <- c("gridtype = lonlat",
-                     paste0("xsize = ", gridXsize),
-                     paste0("ysize = ", gridYsize),
-                     "xfirst = -180",
-                     paste0("xinc = ", input$gridResolution),
-                     "yfirst = -90",
-                     paste0("yinc = ", input$gridResolution))
-
-      writeLines(gridLines, gridSupportFile)
-    }
-
-    removeModal()
-  })
-
-  # Observe when user gives output directory.
-  observeEvent(input$userDirButton, {
-    userDirValid(0)
-    shinyjs::disable("userDirButton")
-    try( userDir <<- choose_directory() )
-    if (dir.exists(userDir)) {
-      output$selectedUserDirectory <- renderText({
-        userDir
-      })
-      userDirValid(1)
-      shinyjs::show("selectedUserDirectory")
-      setwd(userDir)
-    } else {
-      shinyjs::hide("selectedUserDirectory")
-    }
-    shinyjs::enable("userDirButton")
-  })
-
-  # Observe when user gives grid resolution.
-  observeEvent(input$gridResolution, {
-    resolutionValid(0)
-    req(input$gridResolution)
-    if (input$gridResolution >= 0.01 && input$gridResolution <= 89.99) {
-      resolutionValid(1)
-    }
-  })
-
-  # Allow submitting the initial modal page, as soon as check sum fullfilled, i.e. all required inputs are valid.
+  videoDir <- reactiveVal(file.path(getwd(), "www", "video"))
   observe({
-    if (resolutionValid() + userDirValid() == checkSum) {
-      shinyjs::enable("Submit")
-    } else {
-      shinyjs::disable("Submit")
+    if (dir.exists(videoDir())) {
+      unlink(videoDir(), recursive = TRUE, force = TRUE)
     }
   })
-
-  observeEvent(input$modify_userDir, {
-    showModal(modalDialog(
-      h4("Your current user directory is located at:"),
-      tags$strong(dirname(userDir)),
-      br(),
-      br(),
-      actionButton("userDirButton", "Change user directory."),
-      title = "User directory information.",
-      size = "l"
-    ))
-  })
-
-  observe({
-    # Trigger every time this changes
-    c(action_userDir_change())
-    output$prepareString <- renderUI({
-      # Can be found in global.R
-      if (isRunningLocally) {
-        # Local host prepare string dependent on userDir
-        tags$div(h2("Prepare"),
-                 tags$p("Please select a TAR file", tags$strong("(.tar)"), " to start the preparation."),
-                 tags$p("of your data. This is the first step after you downloaded your ordered tar-file(s)."),
-                 br(),
-                 tags$p("This application will help you to extract, unzip and merge the data."),
-                 tags$p("In addition, you can select a time range and region from your data."),
-                 br(),
-                 tags$p("Finally, a NetCDF file will be created for you. You can find it in the output directory"),
-                 tags$p("located at ", tags$strong(dirname(userDir))),
-                 br(),
-                 tags$p("The app guides through all steps."))
-      } else {
-        tags$div(h2("Prepare"),
-                 tags$p("Please select a TAR file", tags$strong("(.tar)"), " to start the preparation."),
-                 tags$p("of your data. This is the first step after you downloaded your ordered tar-file(s)."),
-                 br(),
-                 tags$p("This application will help you to extract, unzip and merge the data."),
-                 tags$p("In addition, you can select a time range and region from your data."),
-                 br(),
-                 tags$p("Finally, a NetCDF file will be created for you."),
-                 tags$p(tags$strong("Make sure to download your session files before closing this application.")),
-                 br(),
-                 tags$p("The app guides through all steps."))
-      }
-    })
-  })
-
 
 
   #### Reactive values ####
@@ -384,6 +171,9 @@ function(input, output, session) {
   currentOperatorOption <- reactiveVal()
   currentOperatorValue <- reactiveVal()
 
+  chosen_latPoints <- reactiveVal(c())
+  chosen_lonPoints <- reactiveVal(c())
+
   # Reactive value for chosen operators + a simulated reactive value.
   operatorDataFrame <<- data.frame()
   operatorDataFrameAction <- reactiveVal(0)
@@ -391,9 +181,16 @@ function(input, output, session) {
   # Repeat message on file loss (remote case only)
   repeatWarning <- reactiveVal(TRUE)
 
+  # Second nc file for operators
+  second_infile <- reactiveVal()
+
   # Reactive value for the nc file to be used in analyze. (update action if file stays the same on new upload)
   nc_path_visualize <- reactiveVal()
   actionVisualize <- reactiveVal(0)
+
+  # Image path for monitor climate
+  image_path_visualize <- reactiveVal()
+  actionVisualizeMonitorClimate <- reactiveVal(0)
 
   # Shape file path
   shapeFile_path <- reactiveVal()
@@ -401,7 +198,6 @@ function(input, output, session) {
 
   # Storing the polygons.
   region_data <- reactiveVal()
-  outfile_ctry <- reactiveVal()
 
   # Instat file path
   instat_path <- reactiveVal()
@@ -431,12 +227,231 @@ function(input, output, session) {
   png_path <- reactiveVal()
 
   # Reactive values for imagewidth and imageheight
-  imageheight <- reactiveVal( round(image_def * (2 / 3)) )
-  imagewidth  <- reactiveVal( image_def )
+  imageheight <- reactiveVal(round(image_def * (2 / 3)))
+  imagewidth  <- reactiveVal(image_def)
   lat_lon_trigger <- reactiveVal(0)
 
   # Reactive value to determine whether this was the first plot
   readyToPlot <- reactiveVal(FALSE)
+
+  # Set these values to one as soon as valid.
+  userDirValid <- reactiveVal(0)
+  resolutionValid <- reactiveVal(0)
+
+  # isRunningLocally can be found in global.R
+  # Find/Create user directory.
+  if (isRunningLocally) {
+    # Case of local host!
+
+    # Read lines of file.
+    for (line in config_lines) {
+      if (startsWith(line, "USRWDIR=")) {
+        if (nchar(line) > 8) {
+          userDir <<- substring(line, 9)
+          userDir <<- file.path(userDir, "output")
+          outputDir <<- userDir
+          # Create the output directory.
+          if (!dir.exists(userDir)) {
+            dir.create(userDir)
+          }
+          setwd(userDir)
+        }
+      }
+    }
+
+    # Set flags and counts for girdInfo and userDir
+    gridSupportFile <- file.path(config_directory, "myGrid.txt")
+    noGridInfoFlag <<- !file.exists(gridSupportFile)
+    noUserDirFlag <<- (nchar(userDir) == 0 || !dir.exists(userDir))
+
+    checkSum <<- 0
+    if (noUserDirFlag || noGridInfoFlag) {
+      # Check sum = 1 unless both files are missing
+      checkSum <<- 1
+      if (noUserDirFlag && noGridInfoFlag) {
+        checkSum <<- 2
+
+        showModal(modalDialog(
+          h4("Please select a directory where created output will be saved."),
+          br(),
+          actionButton("userDirButton", "Choose a user directory."),
+          verbatimTextOutput("selectedUserDirectory"),
+          hr(),
+          h4("Please specify a grid resolution."),
+          h5("The chosen value must be between 0.01 and 89.99.
+              Depending on your browser a comma or a point will be accepted as decimal seperator."),
+          numericInput("gridResolution", "Resolution", value = 0.05, step = 0.01, min = 0.01, max = 89.99),
+          title = "We need your help.",
+          size = "l",
+          footer = shinyjs::disabled(actionButton("Submit", "Submit"))
+        ))
+      } else if (noUserDirFlag) {
+        showModal(modalDialog(
+          h4("Please select a directory where we can save your created output."),
+          br(),
+          actionButton("userDirButton", "Choose a user directory."),
+          verbatimTextOutput("selectedUserDirectory"),
+          title = "We need your help.",
+          size = "l",
+          footer = shinyjs::disabled(actionButton("Submit", "Submit"))
+        ))
+      } else {
+        showModal(modalDialog(
+          h4("Please specify a grid resolution."),
+          h5("The chosen value must be between 0.01 and 89.99.
+              Depending on your browser a comma or a point will be accepted as decimal seperator."),
+          numericInput("gridResolution", "Resolution", value = 0.05, step = 0.01, min = 0.01, max = 89.99),
+          title = "We need your help.",
+          size = "l",
+          footer = shinyjs::disabled(actionButton("Submit", "Submit"))
+        ))
+      }
+    }
+  } else {
+    # Case of remote host!
+	dataDir <- file.path("output")
+    dataDir <- file.path(dirname(dataDir), "output")
+
+    # Remember the user directory and tear it down in destructor.
+    if (!dir.exists("output")) {
+      warning("Creating user directory at '", getwd(), "/output'.")
+      dir.create("output")
+    }
+    userDir   <<- file.path("output", sessionName)
+    outputDir <<- userDir
+
+    dirFlag <- FALSE
+    # If by any chance this directroy has existed give warning message.
+    if (dir.exists(userDir)) {
+      dirFlag <- TRUE
+      warning(paste0("User directory: ", userDir, " already exists. APP WILL STOP!"))
+    } else {
+      dir.create(userDir)
+    }
+  }
+
+  # Observing when user submits initial values for config and/or myGrid.txt file.
+  observeEvent(input$Submit, {
+    if (noUserDirFlag) {
+      # Overwrite config file (config filepath is found in global.R)
+      if (file.exists(config_filepath)) {
+        file.remove(config_filepath)
+      }
+      file.create(config_filepath)
+
+      # Save  for next session.
+      writeLines(paste0("USRWDIR=", userDir), config_filepath)
+
+      userDir   <<- file.path(userDir, "output")
+      outputDir <<- userDir
+      action_userDir_change(action_userDir_change() + 1)
+
+      if (!dir.exists(userDir)) {
+        dir.create(userDir)
+      }
+    }
+
+    if (noGridInfoFlag) {
+      file.create(gridSupportFile)
+
+      gridXsize <- 360 / input$gridResolution + 1
+      gridYsize <- 180 / input$gridResolution + 1
+
+      gridLines <- c("gridtype = lonlat",
+                     paste0("xsize = ", gridXsize),
+                     paste0("ysize = ", gridYsize),
+                     "xfirst = -180",
+                     paste0("xinc = ", input$gridResolution),
+                     "yfirst = -90",
+                     paste0("yinc = ", input$gridResolution))
+
+      writeLines(gridLines, gridSupportFile)
+    }
+
+    removeModal()
+  })
+
+  # Observe when user gives output directory.
+  observeEvent(input$userDirButton, {
+    userDirValid(0)
+    shinyjs::disable("userDirButton")
+    try(userDir <<- choose_directory())
+    if (dir.exists(userDir)) {
+      output$selectedUserDirectory <- renderText({
+        userDir
+      })
+      userDirValid(1)
+      shinyjs::show("selectedUserDirectory")
+      setwd(userDir)
+    } else {
+      shinyjs::hide("selectedUserDirectory")
+    }
+    shinyjs::enable("userDirButton")
+  })
+
+  # Observe when user gives grid resolution.
+  observeEvent(input$gridResolution, {
+    resolutionValid(0)
+    req(input$gridResolution)
+    if (input$gridResolution >= 0.01 && input$gridResolution <= 89.99) {
+      resolutionValid(1)
+    }
+  })
+
+  # Allow submitting the initial modal page, as soon as check sum fullfilled, i.e. all required inputs are valid.
+  observe({
+    req(isRunningLocally)
+    if (resolutionValid() + userDirValid() == checkSum) {
+      shinyjs::enable("Submit")
+    } else {
+      shinyjs::disable("Submit")
+    }
+  })
+
+  observeEvent(input$modify_userDir, {
+    showModal(modalDialog(
+      h4("Your current user directory is located at:"),
+      tags$strong(dirname(userDir)),
+      br(),
+      actionButton("userDirButton", "Change user directory."),
+      title = "User directory information.",
+      size = "l"
+    ))
+  })
+
+  observe({
+    # Trigger every time this changes
+    c(action_userDir_change())
+    output$prepareString <- renderUI({
+      # Can be found in global.R
+      if (isRunningLocally) {
+        # Local host prepare string dependent on userDir
+        tags$div(h2("Prepare"),
+                 tags$p("Please select a TAR file", tags$strong("(.tar)"), " to start the preparation."),
+                 tags$p("of your data. This is the first step after you downloaded your ordered tar-file(s)."),
+                 br(),
+                 tags$p("This application will help you to extract, unzip and merge the data."),
+                 tags$p("In addition, you can select a time range and region from your data."),
+                 br(),
+                 tags$p("Finally, a NetCDF file will be created for you. You can find it in the output directory"),
+                 tags$p("located at ", tags$strong(dirname(userDir))),
+                 br(),
+                 tags$p("The app guides through all steps."))
+      } else {
+        tags$div(h2("Prepare"),
+                 tags$p("Please select a TAR file", tags$strong("(.tar)"), " to start the preparation."),
+                 tags$p("of your data. This is the first step after you downloaded your ordered tar-file(s)."),
+                 br(),
+                 tags$p("This application will help you to extract, unzip and merge the data."),
+                 tags$p("In addition, you can select a time range and region from your data."),
+                 br(),
+                 tags$p("Finally, a NetCDF file will be created for you."),
+                 tags$p(tags$strong("Make sure to download your session files before closing this application.")),
+                 br(),
+                 tags$p("The app guides through all steps."))
+      }
+    })
+  })
 
   # Going to home screen.
   observeEvent(input$homeimg, {
@@ -465,9 +480,9 @@ function(input, output, session) {
   # Updating the path to the tar file. (local)
   observeEvent(input$tarFileLocal, {
     shinyjs::disable("tarFileLocal")
-    res <- try( tar_path(file.choose(new = TRUE)) )
+    res <- try(tar_path(file.choose(new = TRUE)))
     if (class(res) != "try-error") {
-      #for (path in tar_path()){
+      #for (path in tar_path()) {
       if (!endsWith(tar_path(), ".tar")) {
         isolate(tar_path(""))
         wrong_file_modal(".tar")
@@ -479,22 +494,24 @@ function(input, output, session) {
     shinyjs::enable("tarFileLocal")
   }, ignoreInit = TRUE)
 
-  # Observing changes in selected tar file. (remote)
+  # Handling remote tar selection.
+  shinyFiles::shinyFileChoose(input, 'tarFileRemote', session = session, roots = remoteVolume, filetypes=c('tar'))
+    
   observeEvent(input$tarFileRemote, {
-    tar_path(input$tarFileRemote$name)
-    if (!endsWith(tar_path(), ".tar")) {
-      isolate(tar_path(""))
-      wrong_file_modal(".tar")
-    } else {
-      tar_path_action(tar_path_action() + 1)
-    }
-  }, ignoreInit = TRUE)
+    pth <- shinyFiles::parseFilePaths(remoteVolume,input$tarFileRemote)
+    req(nrow(pth) > 0)
+    req(file.exists(pth$datapath))
+    req(endsWith(pth$datapath, ".tar"))
+    tar_path( pth$datapath )
+    tar_path_action(tar_path_action() + 1)
+  })
 
   # Updating the path to the nc file analyze. (local)
   observeEvent(input$ncFileLocal_analyze, {
     shinyjs::disable("ncFileLocal_analyze")
-    res <- try( nc_path_analyze(file.choose(new = TRUE)) )
-    if (class(res) != 'try-error') {
+    shinyjs::disable("useOutputFile_analyze")
+    res <- try(nc_path_analyze(file.choose(new = TRUE)))
+    if (class(res) != "try-error") {
       if (!endsWith(nc_path_analyze(), ".nc")) {
         isolate(nc_path_analyze(""))
         wrong_file_modal(".nc")
@@ -503,18 +520,26 @@ function(input, output, session) {
       }
     }
     shinyjs::enable("ncFileLocal_analyze")
+    shinyjs::enable("useOutputFile_analyze")
   }, ignoreInit = TRUE)
 
-  # Observing changes in selected nc file analyze. (remote)
+  # Use shiny files to handle remote uploading from user directory.
+  volumes_output = c("Output" = outputDir, remoteVolume)
+
+  shinyFiles::shinyFileChoose(input, 'ncFileRemote_analyze', session = session, roots = volumes_output, filetypes=c('nc'))
+
   observeEvent(input$ncFileRemote_analyze, {
-    nc_path_analyze(input$ncFileRemote_analyze$name)
-    if (!endsWith(nc_path_analyze(), ".nc")) {
+    pth <- shinyFiles::parseFilePaths(volumes_output,input$ncFileRemote_analyze)
+    req(nrow(pth) > 0)
+    req(file.exists(pth$datapath))
+    if (!endsWith(pth$datapath, ".nc")) {
       isolate(nc_path_analyze(""))
       wrong_file_modal(".nc")
     } else {
+      nc_path_analyze( pth$datapath )
       nc_path_analyze_action(nc_path_analyze_action() + 1)
     }
-  }, ignoreInit = TRUE)
+  })
 
   # If user chooses to take generated nc file update nc_path_analyze. (output file)
   observeEvent(input$useOutputFile_analyze, {
@@ -530,8 +555,9 @@ function(input, output, session) {
   # Updating the path to the nc file visualize. (local)
   observeEvent(input$ncFileLocal_visualize, {
     shinyjs::disable("ncFileLocal_visualize")
-    res <- try( nc_path_visualize(file.choose(new = TRUE)) )
-    if (class(res) != 'try-error') {
+    shinyjs::disable("useOutputFile_visualize")
+    res <- try(nc_path_visualize(file.choose(new = TRUE)))
+    if (class(res) != "try-error") {
       if (!endsWith(nc_path_visualize(), ".nc")) {
         isolate(nc_path_visualize(""))
         wrong_file_modal(".nc")
@@ -540,18 +566,24 @@ function(input, output, session) {
       }
     }
     shinyjs::enable("ncFileLocal_visualize")
+    shinyjs::enable("useOutputFile_visualize")
   }, ignoreInit = TRUE)
 
   # Observing changes in selected nc file visualize. (remote)
+  shinyFiles::shinyFileChoose(input, 'ncFileRemote_visualize', session = session, roots = volumes_output, filetypes=c('nc'))
+
   observeEvent(input$ncFileRemote_visualize, {
-    nc_path_visualize(input$ncFileRemote_visualize$name)
-    if (!endsWith(nc_path_visualize(), ".nc")) {
+    pth <- shinyFiles::parseFilePaths(volumes_output,input$ncFileRemote_visualize)
+    req(nrow(pth) > 0)
+    req(file.exists(pth$datapath))
+    if (!endsWith(pth$datapath, ".nc")) {
       isolate(nc_path_visualize(""))
       wrong_file_modal(".nc")
     } else {
+      nc_path_visualize( pth$datapath )
       actionVisualize(actionVisualize() + 1)
     }
-  }, ignoreInit = TRUE)
+  })
 
   # If user chooses to take generated nc file update nc_path_visualize. (output file)
   observeEvent(input$useOutputFile_visualize, {
@@ -560,14 +592,14 @@ function(input, output, session) {
       isolate(nc_path_visualize(""))
       wrong_file_modal(".nc")
     } else {
-      actionVisualize( actionVisualize() + 1 )
+      actionVisualize(actionVisualize() + 1)
     }
   }, ignoreInit = TRUE)
 
   # Updating path to shape file. (local)
   observeEvent(input$shapefileLocal, {
     shinyjs::disable("shapefileLocal")
-    res <- try( shapeFile_path(file.choose(new = TRUE)) )
+    res <- try(shapeFile_path(file.choose(new = TRUE)))
     if (class(res) != "try-error") {
       if (!endsWith(shapeFile_path(), ".shp")) {
         isolate(shapeFile_path(""))
@@ -580,15 +612,20 @@ function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # Observing changes in selected shape file. (remote)
+  shinyFiles::shinyFileChoose(input, 'shapefileRemote', session = session, roots = remoteVolume, filetypes=c('shp'))
+
   observeEvent(input$shapefileRemote, {
-    shapeFile_path(input$shapefileRemote$name)
-    if (!endsWith(shapeFile_path(), ".shp")) {
+    pth <- shinyFiles::parseFilePaths(remoteVolume,input$shapefileRemote)
+    req(nrow(pth) > 0)
+    req(file.exists(pth$datapath))
+    if (!endsWith(pth$datapath, ".shp")) {
       isolate(shapeFile_path(""))
       wrong_file_modal(".shp")
     } else {
+      shapeFile_path( pth$datapath )
       shapeFile_path_action(shapeFile_path_action() + 1)
     }
-  }, ignoreInit = TRUE)
+  })
 
   # Deleting instat file path when removing plot r-instat check box selection
   observeEvent(input$plot_rinstat, {
@@ -600,8 +637,8 @@ function(input, output, session) {
   # Updating the path to the instat file. (local)
   observeEvent(input$instat_file_local, {
     shinyjs::disable("instat_file_local")
-    res <- try( instat_path(file.choose(new = TRUE)) )
-    if (class(res) != 'try-error') {
+    res <- try(instat_path(file.choose(new = TRUE)))
+    if (class(res) != "try-error") {
       if (!endsWith(instat_path(), ".RData")) {
         isolate(instat_path(""))
         wrong_file_modal(".RData")
@@ -613,15 +650,20 @@ function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # Observing changes in selected instat file. (remote)
+  shinyFiles::shinyFileChoose(input, 'instat_file_remote', session = session, roots = remoteVolume, filetypes=c('RData'))
+
   observeEvent(input$instat_file_remote, {
-    instat_path(input$instat_file_remote$name)
-    if (!endsWith(instat_path(), ".RData")) {
+    pth <- shinyFiles::parseFilePaths(remoteVolume,input$instat_file_remote)
+    req(nrow(pth) > 0)
+    req(file.exists(pth$datapath))
+    if (!endsWith(pth$datapath, ".RData")) {
       isolate(instat_path(""))
       wrong_file_modal(".RData")
     } else {
+      instat_path( pth$datapath )
       instat_path_action(instat_path_action() + 1)
     }
-  }, ignoreInit = TRUE)
+  })
 
   resetToPreparePanel <- function() {
     # Clear mem
@@ -635,6 +677,10 @@ function(input, output, session) {
     shinyjs::hide("panel_prepareInput2")
     shinyjs::reset("panel_prepareInput1")
     shinyjs::reset("panel_prepareInput2")
+    shinyjs::hide("spinner_prepare1")
+    shinyjs::hide("spinner_prepare2")
+    shinyjs::hide("spinner_prepare3")
+    shinyjs::hide("spinner_analyze")
     shinyjs::hide("spinner_visualize")
     shinyjs::hide("panel_analyze")
     shinyjs::reset("panel_analyze")
@@ -685,6 +731,9 @@ function(input, output, session) {
     shinyjs::hide("spinner_visualize")
     shinyjs::hide("visualizePage")
     shinyjs::reset("visualizePage")
+    shinyjs::reset("myImage_monitorClimate")
+    shinyjs::reset("monitorClimate_PNG")
+    shinyjs::reset("monitorClimate_MP4")
 
     readyToPlot(FALSE)
 
@@ -722,7 +771,7 @@ function(input, output, session) {
     req(tar_path_action())
 
     # If wrong format alert and stop.
-    #for(path in tar_path()){
+    #for(path in tar_path()) {
     if (!endsWith(tar_path(), ".tar")) {
       isolate(tar_path(""))
       showModal(modalDialog(
@@ -736,7 +785,7 @@ function(input, output, session) {
       shinyjs::show("spinner_prepare1", anim = TRUE, animType = "fade")
 
       # Extracting date range and lat/lon range from functions
-      extractedDates <- extractDateRange( tar_path() , tar_flag = 1)
+      extractedDates <- extractDateRange(tar_path(), tar_flag = 1)
       timestep(extractedDates$timestep)
 
       # Rendering date range.
@@ -763,7 +812,7 @@ function(input, output, session) {
 
   # Observing upload of aux file.
   observeEvent(input$aux_upload, {
-    try( res <- globalAuxFilePath( file.choose(new = TRUE)) )
+    res <- try(globalAuxFilePath(file.choose(new = TRUE)))
     if (class(res) != "try-error") {
       shiny::removeModal()
     } else {
@@ -778,11 +827,11 @@ function(input, output, session) {
   # Observing
   observeEvent(input$aux_download, {
     auxfile <- file.path(userDir, "claas2_level2_aux_data.nc")
-    try( res <- utils::download.file("https://public.cmsaf.dwd.de/data/perm/auxilliary_data/claas2_level2_aux_data.nc", auxfile, "auto", mode = "wb") )
+    res <- tryCatch(utils::download.file("https://public.cmsaf.dwd.de/data/perm/auxilliary_data/claas2_level2_aux_data.nc", auxfile, "auto", mode = "wb"))
 
     # Download file returns 0 on success.
-    if (res == 0) {
-      globalAuxFilePath( file.path( auxfile ) )
+    if (class(res) != "try-error" && res == 0) {
+      globalAuxFilePath(file.path(auxfile))
       shiny::removeModal()
     } else {
       showModal(modalDialog(
@@ -807,7 +856,7 @@ function(input, output, session) {
     tarlist_all <- getTarList(path_to_tar, tar_flag = tar_flag, includeClaasAux = TRUE)
 
     # WARNING: DATES ARE IN SAME FORMAT (INDEPENDENT OF TIMESTEP ==/!= 'm')
-    # IN FACT: WE ARE OMITTING TIMESTEP VALUE CAUS WE DON'T APPEAR TO NEED IT.
+    # IN FACT: WE ARE OMITTING TIMESTEP VALUE CAUSE WE DON'T APPEAR TO NEED IT.
     dates <- extractAllDates(path_to_tar, tar_flag = tar_flag)
     dates <- dates$allDates
 
@@ -817,7 +866,7 @@ function(input, output, session) {
       tarlist_all <- tarlist_all[tarlist_all != "CM_SAF_CLAAS2_L2_AUX.nc"]
     }
 
-    if(tar_flag == 0){
+    if (tar_flag == 0) {
       tar_chunk_size <- 100
     }else{
       tar_chunk_size <- 1000
@@ -829,14 +878,14 @@ function(input, output, session) {
     ordname <- basename(path_to_tar)
     ordpath <- dirname(path_to_tar)
 
-    flist <- list.files(ordpath,substr(ordname,1,8), full.names = TRUE)
+    flist <- list.files(ordpath, substr(ordname, 1, 8), full.names = TRUE)
 
 
     for (file in flist) {
       if (tar_flag == 1) {
-        tarlist <- utils::untar(file,list = TRUE,tar = "internal")
+        tarlist <- utils::untar(file, list = TRUE, tar = "internal")
       } else {
-        tarlist <- utils::untar(file,list = TRUE)
+        tarlist <- utils::untar(file, list = TRUE)
       }
 
       if ("CM_SAF_CLAAS2_L2_AUX.nc" %in% tarlist) {
@@ -883,12 +932,13 @@ function(input, output, session) {
           end <- dums
         }
 
-        tarlist <- tarlist[start:end]
+        tarlist <- tarlist[which(tarlist %in% tarlist_all[start:end])]
+        if (length(tarlist) == 0) next
 
-        filelist <- append(filelist,tarlist)
+        filelist <- append(filelist, tarlist)
 
         if (length(tarlist) > tar_chunk_size) {
-          dum <- seq(0, length(tarlist),tar_chunk_size)
+          dum <- seq(0, length(tarlist), tar_chunk_size)
 
           for (j in 1:(length(dum) - 1)) {
             tarlist_alt <- tarlist[(dum[j] + 1):dum[j + 1]]
@@ -985,7 +1035,6 @@ function(input, output, session) {
 
   getUserOptions <- function(infile, claas_flag) {
     id <- ncdf4::nc_open(infile)
-
     vn <- names(id$var)
     dn <- names(id$dim)
     lon_var <- "lon"
@@ -1014,7 +1063,7 @@ function(input, output, session) {
     ncdf4::nc_close(id)
 
     var_default <-
-      subset(vn,!(
+      subset(vn, !(
         vn %in% c(
           "lat",
           "lon",
@@ -1032,7 +1081,7 @@ function(input, output, session) {
     for (variable in vn) {
       if (startsWith(variable, "HLW") || startsWith(variable, "HSH")) {
         id <- ncdf4::nc_open(infile)
-        max_level <- length(ncdf4::ncvar_get(id,"lev"))
+        max_level <- length(ncdf4::ncvar_get(id, "lev"))
         ncdf4::nc_close(id)
       }
     }
@@ -1048,6 +1097,7 @@ function(input, output, session) {
       ))
 
       req(FALSE)
+      resetToPreparePanel()
     }
 
     return(list(
@@ -1076,7 +1126,7 @@ function(input, output, session) {
     shinyjs::reset("panel_prepareInput1")
     shinyjs::show("spinner_prepare2", anim = TRUE, animType = "fade")
 
-    untarVals( untarFiles(tar_path(), dateRange_prep()[1], dateRange_prep()[2], timestep(), tar_flag = 1) )
+    untarVals(untarFiles(tar_path(), dateRange_prep()[1], dateRange_prep()[2], timestep(), tar_flag = 1))
   }, ignoreInit = TRUE)
 
   # Set all input values for next stage.
@@ -1089,18 +1139,17 @@ function(input, output, session) {
 
     infile <- untarVals()$infile
     claas_flag <- untarVals()$claas_flag
-
     id <- ncdf4::nc_open(infile)
-    file_info <- cmsaf:::check_dims(id)
+    file_info <- cmsafops:::check_dims(id)
     ncdf4::nc_close(id)
 
     if (!file_info$has_lon_lat) {
       if (claas_flag) {
         auxFilePath(file.path(ordPath, "CM_SAF_CLAAS2_L2_AUX.nc"))
-        cmsaf::add_grid_info(infile, auxFilePath(), outfile = NULL, overwrite = TRUE)
+        cmsafops::add_grid_info(infile, auxFilePath(), outfile = NULL, overwrite = TRUE)
       } else {
-        grid_info <- cmsaf:::get_grid(infile)
-        if (grid_info == 5 && (is.null(globalAuxFilePath()) || !file.exists(globalAuxFilePath())) ) {
+        grid_info <- get_grid(infile)
+        if (grid_info == 5 && (is.null(globalAuxFilePath()) || !file.exists(globalAuxFilePath()))) {
           showModal(modalDialog(
             h4("Your data seems to require an auxiliar file. You can either upload a local auxiliar file or download it from the public CM SAF website."),
             br(),
@@ -1118,8 +1167,18 @@ function(input, output, session) {
 
           # Leave silently and come back when auxFilePath is updated.
           req(FALSE)
+          cmsafops::add_grid_info(infile, globalAuxFilePath(), outfile = NULL, overwrite = TRUE)
+        } else if (grid_info == 2 || grid_info == 7) {
+          showModal(modalDialog(
+            h4("Sorry, the CM SAF R Toolbox can not handle data in sinusoidal projection.
+               Please use the 'change projection' option during the order process.
+               Your NetCDF data have to be on a regular lon-lat grid."),
+            title = "Error!",
+            size = "l"))
+
+          resetToPreparePanel()
+          req(FALSE)
         }
-        cmsaf::add_grid_info(infile, globalAuxFilePath(), outfile = NULL, overwrite = TRUE)
       }
 
     }
@@ -1145,7 +1204,7 @@ function(input, output, session) {
     dimensions(userOptions$dimensions)
 
     output$variable_ui <- renderUI({
-      vars <- subset(userOptions$variables, !(userOptions$variables %in% c("lat","lon","time_bnds","nb2","time")))
+      vars <- subset(userOptions$variables, !(userOptions$variables %in% c("lat", "lon", "time_bnds", "nb2", "time")))
       selectInput("variableInput",
                   "We found the following variables",
                   choices = vars)
@@ -1155,9 +1214,9 @@ function(input, output, session) {
     output$lonRange_ui <- renderUI({
       sliderInput(inputId = "lonRange",
                   label = "Please select a longitude range.",
-                  min = trunc(20*userOptions$lon_range[1])/20,
-                  max = trunc(20*userOptions$lon_range[2])/20,
-                  value = c(trunc(20*userOptions$lon_range[1])/20, trunc(20*userOptions$lon_range[2])/20),
+                  min = trunc(20 * userOptions$lon_range[1]) / 20,
+                  max = trunc(20 * userOptions$lon_range[2]) / 20,
+                  value = c(trunc(20 * userOptions$lon_range[1]) / 20, trunc(20 * userOptions$lon_range[2]) / 20),
                   step = 0.05
       )
     })
@@ -1166,9 +1225,9 @@ function(input, output, session) {
     output$latRange_ui <- renderUI({
       sliderInput(inputId = "latRange",
                   label = "Please select a latitude range.",
-                  min = trunc(20*userOptions$lat_range[1])/20,
-                  max = trunc(20*userOptions$lat_range[2])/20,
-                  value = c(trunc(20*userOptions$lat_range[1])/20, trunc(20*userOptions$lat_range[2])/20),
+                  min = trunc(20 * userOptions$lat_range[1]) / 20,
+                  max = trunc(20 * userOptions$lat_range[2]) / 20,
+                  value = c(trunc(20 * userOptions$lat_range[1]) / 20, trunc(20 * userOptions$lat_range[2]) / 20),
                   step = 0.05
       )
     })
@@ -1187,13 +1246,10 @@ function(input, output, session) {
     req(input$lonRange)
     req(input$latRange)
 
-    x_lims <- isolate(spatialRange$lon_range + c(-10, 10))
-    y_lims <- isolate(spatialRange$lat_range + c(-10, 10))
-
-    maps::map("world", fill = TRUE, col = "gray36", bg = "white", xlim = x_lims, ylim = y_lims)
-    graphics::rect(input$lonRange[1], input$latRange[1], input$lonRange[2], input$latRange[2], lwd = 3, col = "brown4", density = 0)
-    graphics::rect(input$lonRange[1], input$latRange[1], input$lonRange[2], input$latRange[2], lwd = 0.5, angle = 36, col = "brown4", density = 30)
-    title(main = "Preview of available spatial coverage")
+    cmsafvis::render_preview_plot(spatial_lon_range = isolate(spatialRange$lon_range),
+                                  spatial_lat_range = isolate(spatialRange$lat_range),
+                                  lonRange = input$lonRange,
+                                  latRange = input$latRange)
   })
 
   observe({
@@ -1395,11 +1451,11 @@ function(input, output, session) {
     } # end if claas flag
 
     if (!is.null(level)) {
-      pattern <- substr(filelist[1],1,5)
+      pattern <- substr(filelist[1], 1, 5)
 
       outfile <- file.path(outputDir, paste0(var, "_", startDate, "-", endDate, ".nc"))
 
-      cmsaf::levbox_mergetime(var,
+      cmsafops::levbox_mergetime(var,
                               level = level,
                               path = ordDir,
                               pattern = pattern,
@@ -1416,7 +1472,7 @@ function(input, output, session) {
 
       outfile <- file.path(outputDir, paste0(var, "_", startDate, "-", endDate, ".nc"))
 
-      cmsaf::box_mergetime(var,
+      cmsafops::box_mergetime(var,
                            path = ordDir,
                            pattern = pattern,
                            outfile = outfile,
@@ -1437,18 +1493,18 @@ function(input, output, session) {
         removelist <- filelist
       }
 
-      file.remove(file.path(ordDir,removelist))
+      file.remove(file.path(ordDir, removelist))
     }
 
     # Clean up variables
     var_list_default <- c("checkstring", "userDir", "date_from", "date_to", "dates",
-                          "dates_all","delete", "dume", "dummy", "dums", "end", "endDate",
-                          "filelist", "flist","gzcheck", "i", "id", "infile", "infile_name",
+                          "dates_all", "delete", "dume", "dummy", "dums", "end", "endDate",
+                          "filelist", "flist", "gzcheck", "i", "id", "infile", "infile_name",
                           "n", "orddir", "ordname", "ordpath",
-                          "outputDir", "pattern","slash", "split_path", "start",
-                          "startDate", "tar_flag", "tarlist","tarlist_all", "timestep", "var",
-                          "var_default", "vn","zipfile","t","claas_flag","sn","outputFormat",
-                          "lon_var","lat_var","%ni%")
+                          "outputDir", "pattern", "slash", "split_path", "start",
+                          "startDate", "tar_flag", "tarlist", "tarlist_all", "timestep", "var",
+                          "var_default", "vn", "zipfile", "t", "claas_flag", "sn", "outputFormat",
+                          "lon_var", "lat_var", "%ni%")
     var_list <- ls()
 
     var_list <- var_list[var_list %in% var_list_default]
@@ -1514,7 +1570,7 @@ function(input, output, session) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$noRepeat, {
-    repeatWarning( !input$noRepeat )
+    repeatWarning(!input$noRepeat)
   })
 
   # Download the created session directory.
@@ -1578,10 +1634,20 @@ function(input, output, session) {
       # Getting variable(s)
       id <- ncdf4::nc_open(nc_path_analyze())
       vn <- names(id$var)
+      dn <- names(id$dim)
       ncdf4::nc_close(id)
-      var_default <- subset(vn, !(vn %in% c("lat","lon","time_bnds","nb2","time")))
 
-      # TODO: Change this as soon as sinusodial is done.
+      if (!("time" %in% dn)) {
+        showModal(modalDialog(
+          h4("Sorry, the file you chose does not contain a time dimension."),
+          title = "Error!",
+          size = "l"))
+
+        resetToPreparePanel()
+      } else {
+
+      var_default <- subset(vn, !(vn %in% c("lat", "lon", "time_bnds", "nb2", "time")))
+
       # Stop if data are in sinusoidal projection
       if ("sinusoidal" %in% vn) {
         showModal(modalDialog(
@@ -1590,7 +1656,9 @@ function(input, output, session) {
            Your NetCDF data have to be on a regular lon-lat grid."),
           title = "Error!",
           size = "l"))
-      }
+
+        resetToPreparePanel()
+      } else {
 
       output$usedVariable <- renderUI({
         selectInput("usedVariable",
@@ -1600,6 +1668,7 @@ function(input, output, session) {
       })
       shinyjs::hide("panel_analyzeGo")
       shinyjs::show("panel_analyze")
+      }}
     }
   }, ignoreInit = TRUE)
 
@@ -1613,6 +1682,7 @@ function(input, output, session) {
   # Update possible choices for operator.
   observe({
     req(input$operatorGroup)
+
     output$operator <- renderUI({
       # Operator can be found in global.R
       selectInput("operatorInput",
@@ -1626,25 +1696,64 @@ function(input, output, session) {
     req(input$operatorGroup)
     req(input$operatorInput)
 
-    if(input$operatorGroup == "Selection"){
+    climate_analysis_ops <- c(
+      "absolute_map",
+      "anomaly_map",
+      "climatology_map",
+      "fieldmean_plot",
+      "fieldmean_and_anomaly_map"
+    )
 
-      if(input$operatorInput == "selyear"){
-        nc <- ncdf4::nc_open(nc_path_analyze())
-        time_info <- cmsaf:::get_date_time(ncdf4::ncvar_get(nc, "time"),ncdf4::ncatt_get(nc,"time","units")$value)
-        years2 <- time_info$years
-        ncdf4::nc_close(nc)
+    countries_choosable <- codes[, "iso3c"]
+    names(countries_choosable) <- codes[, "country.name.en"]
 
-        output$years_to_select <- renderUI({
-          selectInput("years",
-                      label = "Select years",
-                      choices = sort(unique(years2)),
-                      width = "320px", multiple = TRUE)
-        })
-      }else if(input$operatorInput %in% c("selperiod","extract.period")){
-        nc <- ncdf4::nc_open(nc_path_analyze())
-        date_time <- as.Date(cmsaf::get_time(ncdf4::ncatt_get(nc,"time","units")$value,ncdf4::ncvar_get(nc, "time")))
-        ncdf4::nc_close(nc)
+    if (input$operatorInput %in% climate_analysis_ops) {
+      # If the monitor climate name is chosen, we will visualize right away!
+      shinyjs::show("ClimateAnalysisMessage")
+      # Update checkboxes to correct value
+      updateCheckboxInput(
+        session = session,
+        inputId = "applyAnother",
+        label = "Do you want to apply another operator afterwards?",
+        value = FALSE)
+      updateCheckboxInput(
+        session = session,
+        inputId = "instantlyVisualize",
+        label = "Do you want to visualize the results right away?",
+        value = TRUE)
 
+      # Render countries including EUR, AFR, TOT
+      output$select_country <- renderUI({
+        selectInput("country",
+                  label = "Please select a country",
+                  choices = countries_choosable,
+                  selected = countries_choosable[which(countries_choosable == "S_A")],
+                  multiple = FALSE)
+      })
+    }
+
+    # Render some UI elements dependent on infile and chosen operator
+    if (input$operatorInput == "selyear") {
+      nc <- ncdf4::nc_open(isolate(nc_path_analyze()))
+      time_info <- cmsafops:::get_date_time(ncdf4::ncvar_get(nc, "time"), ncdf4::ncatt_get(nc, "time", "units")$value)
+      years2 <- time_info$years
+      ncdf4::nc_close(nc)
+
+      output$years_to_select <- renderUI({
+        selectInput("years",
+                    label = "Select years",
+                    choices = sort(unique(years2)),
+                    width = "320px",
+                    multiple = TRUE)
+      })
+    }
+
+    if (input$operatorInput %in% c("selperiod", "extract.period", climate_analysis_ops)) {
+      nc <- ncdf4::nc_open(isolate(nc_path_analyze()))
+      date_time <- as.Date(cmsafops::get_time(ncdf4::ncatt_get(nc, "time", "units")$value, ncdf4::ncvar_get(nc, "time")))
+      ncdf4::nc_close(nc)
+
+      if (input$operatorInput %in% c("selperiod", "extract.period")) {
         output$dateRange_to_select <- renderUI({
           dateRangeInput("dateRange_analyze",
                          label = "Select date range",
@@ -1654,28 +1763,157 @@ function(input, output, session) {
                          max = max(date_time),
                          width = "320px")
         })
-      }else if(input$operatorInput == "sellonlatbox"){
-        nc <- ncdf4::nc_open(nc_path_analyze())
-        lon <- ncdf4::ncvar_get(nc, "lon")
-        lat <- ncdf4::ncvar_get(nc, "lat")
-        ncdf4::nc_close(nc)
-
-        output$region_to_select <- renderUI({
-          tags$div(id = "region",
-                   sliderInput("lonRegionSlider",
-                               label = "Select longitude",
-                               min = min(lon, na.rm = T),
-                               max = max(lon, na.rm = T),
-                               value = c(min(lon, na.rm = T), max(lon, na.rm = T)),
-                               width = "320px"),
-                   sliderInput("latRegionSlider",
-                               label = "Select latitude",
-                               min = min(lat, na.rm = T),
-                               max = max(lat, na.rm = T),
-                               value = c(min(lat, na.rm = T), max(lat, na.rm = T)),
-                               width = "320px"))
+      } else {
+        # In monitor climate want to initialize in same year.
+        output$dateRange_to_select <- renderUI({
+          dateRangeInput("dateRange_analyze",
+                         label = "Select date range",
+                         start = min(date_time[format(date_time, "%Y") == format(max(date_time), "%Y")]),
+                         end = max(date_time),
+                         min = min(date_time),
+                         max = max(date_time),
+                         width = "320px")
         })
       }
+
+    }
+
+    if (input$operatorInput %in% c("anomaly_map", "climatology_map", "fieldmean_plot", "fieldmean_and_anomaly_map")) {
+      output$climatology_years <- renderUI({
+
+        years <- unique(format(date_time, format = "%Y"))
+        if (length(years) == 1) {
+          end_year <- years[1]
+        } else {
+          end_year <- years[length(years) - 1]
+        }
+
+        tags$div(
+          fluidRow(
+            column(width = 5,
+                   selectInput("climate_year_start",
+                               label = "Climatology start year",
+                               choices = years,
+                               selected = years[1])),
+            column(width = 5,
+                   selectInput("climate_year_end",
+                               label = "Climatology end year",
+                               choices = years,
+                               selected = end_year))
+          )
+        )
+      })
+    }
+
+    if (input$operatorInput == "seltime") {
+      nc <- ncdf4::nc_open(isolate(nc_path_analyze()))
+      time_info <- cmsafops:::get_date_time(ncdf4::ncvar_get(nc, "time"), ncdf4::ncatt_get(nc, "time", "units")$value)
+      times2 <- time_info$times
+      ncdf4::nc_close(nc)
+
+      output$times_to_select <- renderUI({
+        selectInput("times",
+                    label = "Select times",
+                    choices = sort(unique(times2)),
+                    width = "320px",
+                    multiple = TRUE)
+      })
+    }
+
+    if (input$operatorInput %in% c("sellonlatbox", climate_analysis_ops)) {
+      nc <- ncdf4::nc_open(isolate(nc_path_analyze()))
+      lon <- ncdf4::ncvar_get(nc, "lon")
+      lat <- ncdf4::ncvar_get(nc, "lat")
+      ncdf4::nc_close(nc)
+
+      output$region_to_select <- renderUI({
+        tags$div(id = "region",
+                 sliderInput("lonRegionSlider",
+                             label = "Select longitude",
+                             min = ceiling(min(lon, na.rm = T)*100)/100,
+                             max = floor(max(lon, na.rm = T)*100)/100,
+                             value = c(ceiling(min(lon, na.rm = T)*100)/100,
+                                       floor(max(lon, na.rm = T)*100)/100),
+                             width = "320px"),
+                 sliderInput("latRegionSlider",
+                             label = "Select latitude",
+                             min = ceiling(min(lat, na.rm = T)*100)/100,
+                             max = floor(max(lat, na.rm = T)*100)/100,
+                             value = c(ceiling(min(lat, na.rm = T)*100)/100,
+                                       floor(max(lat, na.rm = T)*100)/100),
+                             width = "320px"))
+      })
+    }
+
+    if (input$operatorInput == "selpoint.multi") {
+      nc <- ncdf4::nc_open(isolate(nc_path_analyze()))
+      lon <- ncdf4::ncvar_get(nc, "lon")
+      lat <- ncdf4::ncvar_get(nc, "lat")
+      ncdf4::nc_close(nc)
+
+      updateCheckboxInput(session, "instantlyVisualize", value = FALSE)
+
+      updateSelectInput(session,
+                        "format",
+                        "Select output format",
+                        choices = c("NetCDF4" = 4, "NetCDF3" = 3, "CSV" = 5))
+
+      output$multi_warning <- renderUI({
+        tags$div(
+          br(),
+          p("This function creates multiple output files.
+                                    These will be saved in your output directory.
+                                    Instant visualization is not possible!", style = "color:red"),
+          br())
+        })
+
+    } else {
+      updateSelectInput(session,
+                        "format",
+                        "Select output format",
+                        choices = c("NetCDF4" = 4, "NetCDF3" = 3))
+    }
+
+    # Disable the correct checkboxes
+    disable_apply_another_ops <- climate_analysis_ops
+    disable_instant_vis_ops <- c(climate_analysis_ops, "selpoint.multi")
+
+    if (input$operatorInput %in% disable_apply_another_ops) {
+      shinyjs::disable("applyAnother")
+    } else {
+      shinyjs::enable("applyAnother")
+    }
+
+    if (input$operatorInput %in% disable_instant_vis_ops) {
+      shinyjs::disable("instantlyVisualize")
+    } else {
+      shinyjs::enable("instantlyVisualize")
+    }
+  })
+
+  observeEvent(input$add_point, {
+    chosen_lonPoints(c(chosen_lonPoints(), input$lonPoint))
+    chosen_latPoints(c(chosen_latPoints(), input$latPoint))
+    updateNumericInput(session, "lonPoint", label = "Select longitude point", value = 0)
+    updateNumericInput(session, "latPoint", label = "Select latitude point", value = 0)
+    output$chosen_points <- renderTable({
+      df <- data.frame(cbind(chosen_lonPoints(), chosen_latPoints()))
+      names(df) <- c("lon", "lat")
+      df
+    })
+  })
+
+  ## Remove file choosing
+  volumes_output <- c(Home = fs::path_home(), shinyFiles::getVolumes()())
+  shinyFiles::shinyFileChoose(input, "ncSecondFileRemote", roots = volumes_output, session = session)
+
+  output$secondFile <- renderPrint({
+    if (is.integer(input$ncSecondFileRemote)) {
+      cat("No file has been selected.")
+    } else {
+      file <- shinyFiles::parseFilePaths(volumes_output, input$ncSecondFileRemote)
+      second_infile( file$datapath )
+      file$datapath
     }
   })
 
@@ -1694,29 +1932,67 @@ function(input, output, session) {
 
     # Operator options can be found in global.R
     currentOperatorOption("None")
+
     for (option in operatorOptions) {
       if (is.element(input$operatorInput, operatorOptionsDict[[option]])) {
         currentOperatorOption(option)
       } else {
         shinyjs::hide(option)
         shinyjs::hide("dateRange_to_select")
+        shinyjs::hide("climatology_years")
+        shinyjs::hide("accumulateInfile")
+        shinyjs::hide("attachToExisting")
         shinyjs::hide("years_to_select")
         shinyjs::hide("region_to_select")
+        shinyjs::hide("times_to_select")
+        shinyjs::hide("points_to_select")
+        shinyjs::hide("select_country")
+        shinyjs::hide("plot_format")
       }
     }
 
     if (currentOperatorOption() != "None") {
-      if(currentOperatorOption() == "dateRange"){
+      if (currentOperatorOption() == "dateRange") {
         shinyjs::show("dateRange_to_select")
-      }else if(currentOperatorOption() == "years"){
+      } else if (currentOperatorOption() == "years") {
         shinyjs::show("years_to_select")
-      }else if(currentOperatorOption() == "region"){
+      } else if (currentOperatorOption() == "times") {
+        shinyjs::show("times_to_select")
+      } else if (currentOperatorOption() == "region") {
         shinyjs::show("region_to_select")
-      }else
-      {
+      } else if (currentOperatorOption() == "point.multi") {
+        shinyjs::show("points_to_select")
+      } else if (currentOperatorOption() == "monitor_climate") {
+        shinyjs::show("accumulateInfile")
+        shinyjs::show("attachToExisting")
+        shinyjs::show("dateRange_to_select")
+        if (input$operatorInput != "absolute_map") {
+          shinyjs::show("climatology_years")
+        }
+        shinyjs::show("region_to_select")
+        shinyjs::show("plot_format")
+        shinyjs::show("select_country")
+      } else {
         shinyjs::show(currentOperatorOption())
       }
     }
+
+    if (input$operatorInput == "selpoint.multi") {
+      shinyjs::show("add_point")
+      shinyjs::show("multi_warning")
+      shinyjs::show("chosen_points")
+    } else {
+      shinyjs::hide("add_point")
+      shinyjs::hide("multi_warning")
+      shinyjs::hide("chosen_points")
+    }
+
+    if (!isRunningLocally && (input$operatorInput %in% c("remap", "cmsaf.add", "cmsaf.sub") || input$attachToExisting)) {
+      shinyjs::show("twofiles")
+    } else {
+      shinyjs::hide("twofiles")
+    }
+
   }, ignoreInit = TRUE)
 
   # Updating the operator table and toggle panel state.
@@ -1732,11 +2008,76 @@ function(input, output, session) {
 
     output$ncShortInfo <- renderPrint({
       req(nc_path_analyze())
-      cmsaf::ncinfo(nc_path_analyze())
+      cmsafops::ncinfo(nc_path_analyze())
     })
 
     if (nrow(operatorDataFrame) == 0) {
       shinyjs::hide("listOfOperators")
+    }
+  }, ignoreInit = TRUE)
+
+
+  # multi day accu graphic message
+  observe({
+    shinyjs::hide("multiDayNonAccuGraphic")
+    req(input$operatorGroup)
+    req(input$operatorGroup == "Climate Analysis")
+    req(!is.null(input$accumulateInfile))
+    req(input$dateRange_analyze)
+    req(input$plot_format)
+    req(!any(is.na(input$dateRange_analyze)))
+
+    if (!input$accumulateInfile &&
+        input$plot_format == "graphic" &&
+        input$dateRange_analyze[1] != input$dateRange_analyze[2]) {
+      shinyjs::show("multiDayNonAccuGraphic")
+    }
+  })
+
+  observeEvent(input$attachToExisting, {
+    if (input$attachToExisting) {
+      shinyjs::show("attach_warning")
+      updateDateRangeInput(session, "dateRange_analyze",
+                           label = "Select date range",
+                           min = as.Date("1983-01-01"),
+                           max = Sys.Date()
+                           )
+      updateSelectInput(session, "climate_year_start",
+                        label = "Climatology start year",
+                        choices = as.character(format(as.Date("1983-01-01"), format = "%Y"):format(Sys.Date(), format = "%Y"))
+                        )
+      updateSelectInput(session, "climate_year_end",
+                        label = "Climatology end year",
+                        choices = as.character(format(as.Date("1983-01-01"), format = "%Y"):format(Sys.Date(), format = "%Y"))
+                        )
+    } else {
+      shinyjs::hide("attach_warning")
+      nc <- ncdf4::nc_open(isolate(nc_path_analyze()))
+      date_time <- as.Date(cmsafops::get_time(ncdf4::ncatt_get(nc, "time", "units")$value, ncdf4::ncvar_get(nc, "time")))
+      ncdf4::nc_close(nc)
+      updateDateRangeInput(session, "dateRange_analyze",
+                                          label = "Select date range",
+                                          start = min(date_time[format(date_time, "%Y") == format(max(date_time), "%Y")]),
+                                          end = max(date_time),
+                                          min = min(date_time),
+                                          max = max(date_time)
+                           )
+      years <- unique(format(date_time, format = "%Y"))
+      if (length(years) == 1) {
+        end_year <- years[1]
+      } else {
+        end_year <- years[length(years) - 1]
+      }
+
+      updateSelectInput(session, "climate_year_start",
+                             label = "Climatology start year",
+                             choices = years,
+                             selected = years[1])
+      updateSelectInput(session, "climate_year_end",
+                             label = "Climatology end year",
+                             choices = years,
+                             selected = end_year)
+
     }
   }, ignoreInit = TRUE)
 
@@ -1768,7 +2109,7 @@ function(input, output, session) {
     # Update outfile path
     newOutfile <- file.path(outputDir, paste0(input$usedVariable, "_", input$operatorInput, time, ".nc"))
 
-    if (newOutfile == nc_path_analyze() ) {
+    if (newOutfile == nc_path_analyze()) {
       # Adding a star tag at end  to prevent equal input and output file name.
       newOutfile <- file.path(outputDir, paste0(input$usedVariable, "_", input$operatorInput, time, "x.nc"))
     }
@@ -1802,13 +2143,32 @@ function(input, output, session) {
                            nc34 = input$format,
                            overwrite = TRUE)
     } else if (currentOperatorOption() == "point") {
-      argumentList <- list(var = input$usedVariable,
-                           infile = nc_path_analyze(),
-                           outfile = newOutfile,
-                           lon1 = input$lonPoint,
-                           lat1 = input$latPoint,
-                           nc34 = input$format,
-                           overwrite = TRUE)
+      if (input$operatorInput == "selpoint") {
+        argumentList <- list(var = input$usedVariable,
+                             infile = nc_path_analyze(),
+                             outfile = newOutfile,
+                             lon1 = input$lonPoint,
+                             lat1 = input$latPoint,
+                             nc34 = input$format,
+                             overwrite = TRUE)
+      } else {
+        newOutfile <- nc_path_analyze()
+        format <- "nc"
+        nc34 <- input$format
+        if (input$format == 5) {
+          format <- "csv"
+          nc34 <- 3
+        }
+        argumentList <- list(var = input$usedVariable,
+                             infile = nc_path_analyze(),
+                             outpath = outputDir,
+                             lon1 = as.numeric(chosen_lonPoints()),
+                             lat1 = as.numeric(chosen_latPoints()),
+                             nc34 = nc34,
+                             format = format)
+        chosen_lonPoints(c())
+        chosen_latPoints(c())
+      }
     } else if (currentOperatorOption() == "dateRange") {
       argumentList <- list(var = input$usedVariable,
                            start = input$dateRange_analyze[1],
@@ -1862,7 +2222,12 @@ function(input, output, session) {
                            overwrite = TRUE)
     }else if (currentOperatorOption() == "method") {
 
-      infile2 <- try( file.choose(new = TRUE) )
+      # Select second input file depending on local or remote session
+      if (!isRunningLocally) {
+        infile2 <- second_infile()
+      } else {
+        infile2 <- try( file.choose(new = TRUE) )
+      }
 
       if (class(infile2) == "try-error") {
         # Show modal and leave silently.
@@ -1871,7 +2236,7 @@ function(input, output, session) {
           br(),
           h4("The grid information of infile2 are the target grid for the interpolation. This File may also be an ASCII-File containing the grid information."),
           br(),
-          h4("For more information please type '?cmsaf::remap' in your R console."),
+          h4("For more information please type '?cmsafops::remap' in your R console."),
           title = "No remap file given.",
           size = "l"
         ))
@@ -1882,13 +2247,13 @@ function(input, output, session) {
           shinyjs::show("listOfOperators", anim = TRUE, animType = "fade")
         }
         shinyjs::enable("applyOperator")
-        req( FALSE )
+        req(FALSE)
       } else if (!file.exists(infile2) || !(endsWith(infile2, ".nc") || endsWith(infile2, ".txt"))) {
         # Show modal and leave silently.
         showModal(modalDialog(
           h4("The additional file needs to be a", tags$strong(".nc"), " file (or", tags$strong(".txt"), " in case of ASCII-format)."),
           br(),
-          h4("For more information please type '?cmsaf::remap' in your R console."),
+          h4("For more information please type '?cmsafops::remap' in your R console."),
           title = "No remap file given.",
           size = "l"
         ))
@@ -1900,7 +2265,7 @@ function(input, output, session) {
         }
         shinyjs::enable("applyOperator")
 
-        req( FALSE )
+        req(FALSE)
       }
 
       argumentList <- list(var = input$usedVariable,
@@ -1910,21 +2275,199 @@ function(input, output, session) {
                            method = input$method,
                            nc34 = input$format,
                            overwrite = TRUE)
+    } else if (currentOperatorOption() == "file_select") {
+      # Select second input file depending on local or remote session
+      if (!isRunningLocally) {
+        infile2 <- second_infile()
+      } else {
+        infile2 <- try( file.choose(new = TRUE) )
+      }
+
+      if (class(infile2) == "try-error") {
+        # Show modal and leave silently.
+        showModal(modalDialog(
+          h4("An additional file is required for this operator."),
+          br(),
+          h4("If you want to add/subtract a constant value, please select the operator 'Add constant to data'/'Subtract constant from data'"),
+          title = "No additional file given.",
+          size = "l"
+        ))
+
+        # Hide spinner allow new operation and leave silently.
+        shinyjs::hide("spinner_analyze")
+        if (input$applyAnother) {
+          shinyjs::show("listOfOperators", anim = TRUE, animType = "fade")
+        }
+        shinyjs::enable("applyOperator")
+        req(FALSE)
+      } else if (!file.exists(infile2) || !(endsWith(infile2, ".nc"))) {
+        # Show modal and leave silently.
+        showModal(modalDialog(
+          h4("The additional file needs to be a", tags$strong(".nc"), " file."),
+          br(),
+          h4("For more information please type '?cmsafops::cmsaf.add' in your R console."),
+          title = "File selection error",
+          size = "l"
+        ))
+
+        # Hide spinner allow new operation and leave silently.
+        shinyjs::hide("spinner_analyze")
+        if (input$applyAnother) {
+          shinyjs::show("listOfOperators", anim = TRUE, animType = "fade")
+        }
+        shinyjs::enable("applyOperator")
+
+        req(FALSE)
+      }
+      argumentList <- list(vari1 = input$usedVariable,
+                           vari2 = input$usedVariable,
+                           infile1 = nc_path_analyze(),
+                           infile2 = infile2,
+                           outfile = newOutfile,
+                           nc34 = input$format,
+                           overwrite = TRUE)
+    } else if (currentOperatorOption() == "monitor_climate") {
+      # THE MONITOR CLIMATE FROM CMSAFVIS
+      if (input$plot_format == "graphic") {
+        fileext <- ".png"
+      }  else {
+        fileext <- ".mp4"
+      }
+
+      #monitor_climate_out_dir <- tempdir()
+      monitor_climate_temp_dir <- file.path(outputDir, "mc_temp")
+      if (!dir.exists(monitor_climate_temp_dir)) {
+        dir.create(monitor_climate_temp_dir)
+      }
+
+      monitor_climate_out_dir <- file.path(outputDir)
+
+      monitor_climate_outfile <- paste0(input$usedVariable, "_", input$operatorInput, time, fileext)
+      monitor_climate_outfile_path <- file.path(monitor_climate_out_dir, monitor_climate_outfile)
+
+      if (input$attachToExisting) {
+      # Select second input file depending on local or remote session
+      if (!isRunningLocally) {
+        infile_attach <- second_infile()
+      } else {
+        infile_attach <- try( file.choose(new = TRUE) )
+      }
+
+      if (class(infile_attach) == "try-error") {
+        # Show modal and leave silently.
+        showModal(modalDialog(
+          h4("An additional file is required for this operator."),
+          br(),
+          h4("If you want to add/subtract a constant value, please select the operator 'Add constant to data'/'Subtract constant from data'"),
+          title = "No additional file given.",
+          size = "l"
+        ))
+
+        # Hide spinner allow new operation and leave silently.
+        shinyjs::hide("spinner_analyze")
+        if (input$applyAnother) {
+          shinyjs::show("listOfOperators", anim = TRUE, animType = "fade")
+        }
+        shinyjs::enable("applyOperator")
+        req(FALSE)
+      } else if (!file.exists(infile_attach) || !(endsWith(infile_attach, ".nc"))) {
+        # Show modal and leave silently.
+        showModal(modalDialog(
+          h4("The additional file needs to be a", tags$strong(".nc"), " file."),
+          br(),
+          h4("For more information please type '?cmsafvis::monitor_climate' in your R console."),
+          title = "File selection error",
+          size = "l"
+        ))
+
+        # Hide spinner allow new operation and leave silently.
+        shinyjs::hide("spinner_analyze")
+        if (input$applyAnother) {
+          shinyjs::show("listOfOperators", anim = TRUE, animType = "fade")
+        }
+        shinyjs::enable("applyOperator")
+
+        req(FALSE)
+      }
+      } else {
+      infile_attach <- "auto"
     }
 
-    res <- try(do.call(input$operatorInput, argumentList))
+      argumentList <- list(
+        plot_type = input$operatorInput,
+        infile = nc_path_analyze(),
+        accumulate = input$accumulateInfile,
+        variable = input$usedVariable,
+        output_format = input$plot_format,
+        animation_pace = input$animation_pace,
+        freeze_animation = FALSE,
+        lang = "eng",
+        outfile_name = monitor_climate_outfile,
+        start_date = input$dateRange_analyze[1],
+        end_date = input$dateRange_analyze[2],
+        country_code = input$country,
+        lon_min = input$lonRegionSlider[1],
+        lon_max = input$lonRegionSlider[2],
+        lat_min = input$latRegionSlider[1],
+        lat_max = input$latRegionSlider[2],
+        out_dir = monitor_climate_out_dir,
+        temp_dir = monitor_climate_temp_dir,
+        climate_dir = monitor_climate_temp_dir,
+        attach = input$attachToExisting,
+        infile_attach = infile_attach
+      )
+
+      if (input$operatorInput != "absolute_map") {
+        argumentList <- append(
+          argumentList,
+          list(
+            climate_year_start = as.numeric(input$climate_year_start),
+            climate_year_end = as.numeric(input$climate_year_end)
+          )
+        )
+      }
+    }
+
+
+    climate_analysis_ops <- c("absolute_map", "anomaly_map", "climatology_map", "fieldmean_plot", "fieldmean_and_anomaly_map")
+
+    # Get package and function
+    if (input$operatorInput %in% climate_analysis_ops) {
+      fun <- get("monitor_climate", asNamespace("cmsafvis"))
+    } else {
+      fun <- get(input$operatorInput, asNamespace("cmsafops"))
+    }
+
+    res <- try(do.call(fun, argumentList))
+
     # Error handling
     if (class(res) == "try-error") {
       showModal(modalDialog(
-        h4("An error occured while applying the operator. Please use another input file or another operator."),
+        h4("An error occured while applying the operator."),
         tags$p(paste0("Message: ", res)),
         title = "Error!",
         size = "l"
       ))
     } else {
+      shinyjs::hide("add_point")
       # No error. Continue with rest.
-      nc_path_analyze( newOutfile )
-      nc_path_visualize( newOutfile )
+
+      # If monitor climate store png/mp4 paths
+      if (input$operatorInput %in% climate_analysis_ops) {
+        image_path_visualize( monitor_climate_outfile_path )
+        actionVisualizeMonitorClimate(actionVisualizeMonitorClimate() + 1)
+
+        shinyjs::hide("spinner_analyze")
+        if (input$applyAnother) {
+          shinyjs::show("listOfOperators", anim = TRUE, animType = "fade")
+        }
+        shinyjs::enable("applyOperator")
+        return()
+      } else {
+        nc_path_analyze(newOutfile)
+        nc_path_visualize(newOutfile)
+
+      }
 
       # Variable 'isRunningLocally' can be found in global.R
       if (repeatWarning() && !isRunningLocally) {
@@ -1947,7 +2490,7 @@ function(input, output, session) {
           newRow <- data.frame(input$operatorInput, "point", paste0("lat: ", input$latPoint, ", lon: ", input$lonPoint))
         } else if (currentOperatorOption() == "region") {
           newRow <- data.frame(input$operatorInput, "region", paste0("lat: [", input$latRegionSlider[1], " ", input$latRegionSlider[2], "], ",
-                                                                     "lon: [", input$lonRegionSlider[1], " ", input$lonRegionSlider[2],"]"))
+                                                                     "lon: [", input$lonRegionSlider[1], " ", input$lonRegionSlider[2], "]"))
         } else if (currentOperatorOption() == "dateRange") {
           newRow <- data.frame(input$operatorInput, "dateRange", paste0("from ", input$dateRange_analyze[1], " to ", input$dateRange_analyze[1]))
         } else {
@@ -1985,9 +2528,24 @@ function(input, output, session) {
 
   }, ignoreInit = TRUE)
 
+
+  observeEvent({
+    actionVisualize()
+    action_visualize_post_modal()
+  },{
+    shinyjs::hide("downloadExitMonitorClimate")
+    shinyjs::hide("myImage_monitorClimate")
+    shinyjs::show("downloadExit")
+  })
+
+  observeEvent(actionVisualizeMonitorClimate(), {
+    shinyjs::hide("downloadExit")
+    shinyjs::show("downloadExitMonitorClimate")
+  })
+
   #### VISUALIZE ####
   getVariableData <- function(timestep_index, id, var) {
-    return(ncdf4::ncvar_get(id, var, start = c(1,1,timestep_index), count = c(-1,-1,1)))
+    return(ncdf4::ncvar_get(id, var, start = c(1, 1, timestep_index), count = c(-1, -1, 1)))
   }
 
   # A function to read all required information from nc file
@@ -1997,14 +2555,14 @@ function(input, output, session) {
     # Open file and get data
     id <- ncdf4::nc_open(infile)
     # Remap to regGrid if necessary
-    file_info <- cmsaf:::check_dims(id)
+    file_info <- cmsafops:::check_dims(id)
     ncdf4::nc_close(id)
     if (!file_info$isRegGrid) {
       remap_timestamp <- format(Sys.time(), "%Y%m%d%H%M%S", tz = "UTC")
       remap_name <- paste0("remap_", remap_timestamp, ".nc")
       outfile <- file.path(userDir, remap_name)
       # grid_filepath can be  found in global.R
-      cmsaf::remap(var, infile, grid_filepath, outfile, overwrite = TRUE)
+      cmsafops::remap(var, infile, grid_filepath, outfile, overwrite = TRUE)
       infile <- outfile
       nc_path_visualize(infile)
     }
@@ -2015,13 +2573,17 @@ function(input, output, session) {
     lon <- ncdf4::ncvar_get(id, "lon")
     lat <- ncdf4::ncvar_get(id, "lat")
 
-    data <- try( ncdf4::ncvar_get(id, var, collapse_degen = FALSE) )
+    data <- try(ncdf4::ncvar_get(id, var, collapse_degen = FALSE))
 
-    visualizeDataTimestep( getVariableData(1, id, var) )
+    if (all(is.na(data))) {
+      stop("The file you are trying to visualize constains only NA values.")
+    }
+
+    visualizeDataTimestep(getVariableData(1, id, var))
 
     date <- ncdf4::ncvar_get(id, "time")
     t_unit <- ncdf4::ncatt_get(id, "time", "units")$value
-    date.time <- as.character(cmsaf::get_time(t_unit, date))
+    date.time <- as.character(cmsafops::get_time(t_unit, date))
     unit <- ncdf4::ncatt_get(id, var, "units")$value
     if (unit == 0)
       (unit <- "-")
@@ -2032,8 +2594,8 @@ function(input, output, session) {
     if (varname == 0)
       (varname <- var)
 
-    creator_att <- ncdf4::ncatt_get(id,0,"creator_name")
-    creator <- ifelse(creator_att$hasatt, creator_att$value, "DE/DWD")
+    creator_att <- ncdf4::ncatt_get(id, 0, "creator_name")
+    creator <- ifelse(creator_att$hasatt, creator_att$value, "-")
     copyrightText <- paste0("Data Source: ", creator)
 
     ncdf4::nc_close(id)
@@ -2061,7 +2623,7 @@ function(input, output, session) {
       reversedDimensions$lonReverse <- TRUE
       lon <- rev(lon)
 
-      visualizeDataTimestep( visualizeDataTimestep()[rev(seq_len(length(lon))),] )
+      visualizeDataTimestep(visualizeDataTimestep()[rev(seq_len(length(lon))), ])
       if (validData) {
         if (dim(data)[3] == 1) {
           data[, , 1] <- data[rev(seq_len(length(lon))), , ]
@@ -2074,7 +2636,7 @@ function(input, output, session) {
     if (lat[1] > lat[length(lat)]) {
       lat <- rev(lat)
       reversedDimensions$latReverse <- TRUE
-      visualizeDataTimestep( visualizeDataTimestep()[, rev(seq_len(length(lat)))] )
+      visualizeDataTimestep(visualizeDataTimestep()[, rev(seq_len(length(lat)))])
 
       if (validData) {
         if (dim(data)[3] == 1) {
@@ -2092,11 +2654,17 @@ function(input, output, session) {
       min_lat <- lat
       max_lat <- lat
 
-      visualizeDataMin( min(data, na.rm = TRUE) )
-      visualizeDataMax( max(data, na.rm = TRUE) )
+      visualizeDataMin(min(data, na.rm = TRUE))
+      visualizeDataMax(max(data, na.rm = TRUE))
       x_range <- length(data)
       ltype <- c("l", "p", "o", "s", "h")
-      date.time <- as.Date(date.time)
+
+      if (startsWith(t_unit, "hours")) {
+        date.time <- as.POSIXct(date.time, format = "%Y-%m-%d %R")
+      } else {
+        date.time <- as.Date(date.time)
+      }
+
       fit <- stats::lm(as.vector(data) ~ c(seq_along(data)))
       dummy <- fit$fitted.values
       if (sum(!is.na(data)) == length(dummy)) {
@@ -2118,6 +2686,7 @@ function(input, output, session) {
           unit = unit,
           lat = lat,
           lon = lon,
+          fitted = fitted,
           copyrightText = copyrightText
         )
       )
@@ -2139,8 +2708,8 @@ function(input, output, session) {
           max_data <- max_data + 0.05
         }
 
-        visualizeDataMin( min_data )
-        visualizeDataMax( max_data )
+        visualizeDataMin(min_data)
+        visualizeDataMax(max_data)
       }
 
       return(
@@ -2163,45 +2732,12 @@ function(input, output, session) {
     }
   }
 
-  # Function to update data min and max values
-
-  # if (class(data) != "try-error") {
-  #   min_data <- min(data, na.rm = TRUE)
-  #   max_data <- max(data, na.rm = TRUE)
-  # } else {
-  #
-  # }
-  #
-  # if (round(min_data, digits = 1) == round(max_data, digits = 1)) {
-  #   min_data <- min_data - 0.05
-  #   max_data <- max_data + 0.05
-  # }
-  #
-  # visualizeDataMin( min_data )
-  # visualizeDataMax( max_data )
-
-
-  # Function for getting number of breaks.
-  break_num <- function(ln, bn, minn, maxn, max_data) {
-    dg <- 2
-    if (abs(max_data) >= 10)
-      (dg <- 1)
-    if (abs(max_data) >= 100)
-      (dg <- 0)
-    a <- vector(mode = "character", length = bn)
-    b <- round(seq(minn, maxn, length.out = bn), digits = dg)
-    c <- round(seq(1, length(b), length.out = ln))
-    a[c] <- b[c]
-    labs <- a
-    return(labs)
-  }
-
   observeEvent(input$action_visualize_variable_modal, {
     # Update the variable
     variable_visualize_modal(input$variable_visualize_modal)
 
     # This will re-trigger the visualization process
-    action_visualize_post_modal( action_visualize_post_modal() + 1)
+    action_visualize_post_modal(action_visualize_post_modal() + 1)
 
     # This will remove the modal.
     removeModal()
@@ -2215,11 +2751,24 @@ function(input, output, session) {
     req(nc_path_visualize())
     shinyjs::hide("panel_visualizeGo")
     shinyjs::show("spinner_visualize", anim = TRUE, animType = "fade")
+    shiny::showTab(inputId = "mainVisualizeTabset", target = "Statistics")
+    shiny::showTab(inputId = "mainVisualizeTabset", target = "File Summary")
 
     id <- ncdf4::nc_open(nc_path_visualize())
     vn <- names(id$var)
+    dn <- names(id$dim)
     ncdf4::nc_close(id)
-    vn <- subset(vn, !(vn %in% c("lat","lon","time_bnds","nb2","time")))
+
+    if (!("time" %in% dn)) {
+      showModal(modalDialog(
+        h4("Sorry, the file you chose does not contain a time dimension."),
+        title = "Error!",
+        size = "l"))
+
+      resetToPreparePanel()
+    } else {
+
+    vn <- subset(vn, !(vn %in% c("lat", "lon", "time_bnds", "nb2", "time")))
 
     # If more than one we allow user to choose a variable. Catch this input here.
     if (!is.null(variable_visualize_modal())) {
@@ -2279,7 +2828,7 @@ function(input, output, session) {
     } else {
       # Trying. If error go back to Visualize page.
       # Maybe visualizeVariables isn't loaded correctly second time?
-      res <- try( visualizeVariables( get_visualize_options(nc_path_visualize(), vn) ) )
+      res <- try(visualizeVariables(get_visualize_options(nc_path_visualize(), vn)))
 
       if (class(res) == "try-error") {
         showModal(modalDialog(
@@ -2307,9 +2856,11 @@ function(input, output, session) {
           shinyjs::hide("sidebar_1d_plot")
           shinyjs::hide("myImage_1d")
           shinyjs::hide("spinner_visualize")
+          shinyjs::hide("filedownload")
 
           shinyjs::show("myImage_2d")
           shinyjs::show("sidebar_2d_plot")
+
 
           output$timestep_visualize <- renderUI({
             selectInput("timestep",
@@ -2320,8 +2871,8 @@ function(input, output, session) {
           })
 
           output$lon_visualize <- renderUI({
-            tmp = c(max(round(visualizeVariables()$min_lon), -180), min(round(visualizeVariables()$max_lon), 180))
-            lon_bounds( tmp )
+            tmp <- c(max(round(visualizeVariables()$min_lon), -180), min(round(visualizeVariables()$max_lon), 180))
+            lon_bounds(tmp)
             sliderInput("slider1",
                         label = "Longitude",
                         min = max(round(visualizeVariables()$min_lon) - 20, -180),
@@ -2330,8 +2881,8 @@ function(input, output, session) {
           })
 
           output$lat_visualize <- renderUI({
-            tmp = c(max(round(visualizeVariables()$min_lat), -90), min(round(visualizeVariables()$max_lat), 90))
-            lat_bounds( tmp )
+            tmp <- c(max(round(visualizeVariables()$min_lat), -90), min(round(visualizeVariables()$max_lat), 90))
+            lat_bounds(tmp)
 
             sliderInput("slider2",
                         label = "Latitude",
@@ -2355,7 +2906,7 @@ function(input, output, session) {
           output$scale_caption <- renderUI({
             textInput("text3",
                       label = "Scale Caption",
-                      value = paste0(visualizeVariables()$varname," [", visualizeVariables()$unit,"]"))
+                      value = paste0(visualizeVariables()$varname, " [", visualizeVariables()$unit, "]"))
           })
         } else {
           # 1D-Plot
@@ -2368,6 +2919,7 @@ function(input, output, session) {
 
           shinyjs::show("myImage_1d")
           shinyjs::show("sidebar_1d_plot")
+          shinyjs::show("filedownload")
 
           output$x_visualize <- renderUI({
             sliderInput("sliderx",
@@ -2393,7 +2945,78 @@ function(input, output, session) {
         # Start timer independently of 1D/2D plot.
         shinyjs::delay(2000, readyToPlot(TRUE))
       }
+    }}
+
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  # Logic after png or mp4 passed to visualizer
+  # This will set up the intial input values on visualize page.
+  observeEvent({
+    actionVisualizeMonitorClimate()
+  }, {
+    req(image_path_visualize())
+    shinyjs::hide("panel_visualizeGo")
+    shinyjs::show("spinner_visualize", anim = TRUE, animType = "fade")
+
+    shinyjs::hide("setupPage")
+    shinyjs::hide("spinner_visualize")
+    shinyjs::show("visualizePage", anim = TRUE, animType = "fade")
+
+    shiny::hideTab(inputId = "mainVisualizeTabset", target = "Statistics")
+    shiny::hideTab(inputId = "mainVisualizeTabset", target = "File Summary")
+    shinyjs::hide("sidebar_1d_plot")
+    shinyjs::hide("myImage_1d")
+    shinyjs::hide("sidebar_2d_plot")
+    shinyjs::hide("myImage_2d")
+    shinyjs::hide("spinner_visualize")
+    shinyjs::hide("filedownload")
+    shinyjs::show("myImage_monitorClimate")
+
+    if (endsWith(image_path_visualize(), "png")) {
+      rnd <- list(
+        src = image_path_visualize(),
+        contentType = "image/png"
+      )
+
+      shinyjs::show("monitorClimate_PNG")
+      shinyjs::hide("monitorClimate_MP4")
+
+      output$monitorClimate_PNG <- renderImage(rnd, deleteFile = FALSE)
+    } else if (endsWith(image_path_visualize(), "mp4")) {
+      rnd <- list(
+        src = image_path_visualize(),
+        contentType = "video/mp4"
+      )
+
+      shinyjs::show("monitorClimate_MP4")
+      shinyjs::hide("monitorClimate_PNG")
+
+      output$monitorClimate_MP4 <- renderUI({
+        # Temporarily copy video to www directory
+        # Reason: Giving absolute path is not allowed due to security issues
+        if (!dir.exists(videoDir())) {
+          dir.create(videoDir())
+        }
+
+        tmpVideo <- file.path(videoDir(), "animation.mp4")
+
+        file.copy(
+          from = image_path_visualize(),
+          to = tmpVideo,
+          overwrite = TRUE
+        )
+
+        # Render the video
+        tags$video(
+          id = "video",
+          type = "video/mp4",
+          src = "video/animation.mp4",
+          controls = "controls")
+      })
     }
+
+    # Start timer independently of 1D/2D plot.
+    shinyjs::delay(2000, readyToPlot(TRUE))
 
   }, ignoreInit = TRUE, ignoreNULL = FALSE)
 
@@ -2405,36 +3028,48 @@ function(input, output, session) {
 
     req(visualizeVariables()$plot_dim == 2)
 
-    lon <- visualizeVariables()$lon[visualizeVariables()$lon <= lon_bounds()[2]]
-    lon <- lon[lon_bounds()[1] <= lon]
+    imDim <- cmsafvis::recalculateImageDimensions(
+      visualizeVariables = visualizeVariables(),
+      lon_bounds = lon_bounds(),
+      lat_bounds = lat_bounds(),
+      image_def = image_def,
+      ihsf = ihsf
+      )
 
-    lat <- visualizeVariables()$lat[visualizeVariables()$lat <= lat_bounds()[2]]
-    lat <- lat[lat_bounds()[1] <= lat]
-
-    # Update this value if you want to change min width/height of plot.
-    minSize <- 200
-    tmpWidth  <- max(minSize, image_def)
-    tmpHeight <- max(minSize, image_def)
-
-    # Update width and height according to visualizeVariables lat and lon vectors
-    if (length(lon) >= length(lat)) {
-      # Shrink height
-      tmpHeight <- round( tmpWidth * length(lat) / length(lon))
-      if (tmpHeight < minSize) {
-        tmpWidth <- minSize/tmpHeight * tmpWidth
-        tmpHeight <- minSize
-      }
-
-      # Why are we doing this? (And why not in the else block?)
-      imageheight( tmpHeight + (round((ihsf * tmpHeight))) )
-      imagewidth( tmpWidth )
-    } else {
-      # No need to check against minSize since we will multiply with a value > 1.
-      tmpWidth <- round( tmpHeight * length(lat) / length(lon))
-
-      imagewidth( tmpWidth )
-      imageheight( tmpHeight )
-    }
+    imagewidth(imDim$imagewidth)
+    imageheight(imDim$imageheight)
+    #
+    #
+    # lon <- visualizeVariables()$lon[visualizeVariables()$lon <= lon_bounds()[2]]
+    # lon <- lon[lon_bounds()[1] <= lon]
+    #
+    # lat <- visualizeVariables()$lat[visualizeVariables()$lat <= lat_bounds()[2]]
+    # lat <- lat[lat_bounds()[1] <= lat]
+    #
+    # # Update this value if you want to change min width/height of plot.
+    # minSize <- 200
+    # tmpWidth  <- max(minSize, image_def)
+    # tmpHeight <- max(minSize, image_def)
+    #
+    # # Update width and height according to visualizeVariables lat and lon vectors
+    # if (length(lon) >= length(lat)) {
+    #   # Shrink height
+    #   tmpHeight <- round(tmpWidth * length(lat) / length(lon))
+    #   if (tmpHeight < minSize) {
+    #     tmpWidth <- minSize / tmpHeight * tmpWidth
+    #     tmpHeight <- minSize
+    #   }
+    #
+    #   # Why are we doing this? (And why not in the else block?)
+    #   imageheight(tmpHeight + (round((ihsf * tmpHeight))))
+    #   imagewidth(tmpWidth)
+    # } else {
+    #   # No need to check against minSize since we will multiply with a value > 1.
+    #   tmpWidth <- round(tmpHeight * length(lat) / length(lon))
+    #
+    #   imagewidth(tmpWidth)
+    #   imageheight(tmpHeight)
+    # }
 
     lat_lon_trigger(lat_lon_trigger() + 1)
   })
@@ -2463,20 +3098,22 @@ function(input, output, session) {
 
   # Y-Range of 1D plot.
   output$y_visualize <- renderUI({
-    req( visualizeDataMax() )
-    req( visualizeDataMin() )
+    req(visualizeDataMax())
+    req(visualizeDataMin())
+
+    diff <- visualizeDataMax() - visualizeDataMin()
 
     sliderInput("slidery",
                 label = "Y-Range",
-                min = round(visualizeDataMin() - (0.25 * visualizeDataMax()), 1),
-                max = round(visualizeDataMax() + (0.25 * visualizeDataMax()), 1),
-                value = c(trunc(visualizeDataMin(), 1), ceiling(10*visualizeDataMax())/10))
+                min = round(visualizeDataMin() - (0.25 * diff), 1),
+                max = round(visualizeDataMax() + (0.25 * diff), 1),
+                value = c(trunc(visualizeDataMin(), 1), trunc(visualizeDataMax())))
   })
 
   # Observe changes to visualize data. If all data are available update min and max values globally.
   # Else we'll need to keep track of them
   observe({
-    req( class(visualizeVariables()$data) == "try-error" )
+    req(class(visualizeVariables()$data) == "try-error")
 
     min_data <- min(visualizeDataTimestep(), na.rm = TRUE)
     max_data <- max(visualizeDataTimestep(), na.rm = TRUE)
@@ -2486,8 +3123,8 @@ function(input, output, session) {
       max_data <- max_data + 0.05
     }
 
-    visualizeDataMin( min_data )
-    visualizeDataMax( max_data )
+    visualizeDataMin(min_data)
+    visualizeDataMax(max_data)
   })
 
   # Observing changes to shape file path
@@ -2518,10 +3155,12 @@ function(input, output, session) {
     if (input$division != "Select division") {
       if (input$division != "COUNTRY") {
         all_regions <- levels(region_data()[[input$division]])
-
       } else {
-        all_regions <- levels(countriesHigh[["ADMIN"]])
+        # data of all countries
+        countries_choosable <- codes[, "iso3c"]
+        names(countries_choosable) <- codes[, "country.name.en"]
 
+        all_regions <- countries_choosable
       }
 
       output$region_options <- renderUI({
@@ -2562,6 +3201,20 @@ function(input, output, session) {
     resetToVisualizePanel()
   }, ignoreInit = TRUE)
 
+  # Go back to set up page (from monitor climate visualization).
+  observeEvent(input$backToSetup2, {
+    # Unlink viedo dir
+    if (dir.exists(videoDir())) {
+      unlink(
+        x = videoDir(),
+        recursive = TRUE,
+        force = TRUE
+      )
+    }
+
+    resetToVisualizePanel()
+  }, ignoreInit = TRUE)
+
   # Reacting to instat file data.
   instat.data <- reactive({
     req(instat_path())
@@ -2578,18 +3231,18 @@ function(input, output, session) {
     req(instat_path())
     req(endsWith(instat_path(), ".RData"))
     # check row.names of data frame
-    lo_dummy <- c("lon","longitude","laenge","x")
-    la_dummy <- c("lat","latitude","breite","y")
-    ti_dummy <- c("time","date","zeit","t")
-    da_dummy <- c("data","daten","z","element")
+    lo_dummy <- c("lon", "longitude", "laenge", "x")
+    la_dummy <- c("lat", "latitude", "breite", "y")
+    ti_dummy <- c("time", "date", "zeit", "t")
+    da_dummy <- c("data", "daten", "z", "element")
 
-    dn <- attr(instat.data(),"element_name")
+    dn <- attr(instat.data(), "element_name")
     if (!is.null(dn)) {
-      da_dummy <- append(da_dummy,dn)
+      da_dummy <- append(da_dummy, dn)
     } else {
-      dn <- attr(instat.data(),"data_name")
+      dn <- attr(instat.data(), "data_name")
       if (!is.null(dn)) {
-        da_dummy <- append(da_dummy,dn)
+        da_dummy <- append(da_dummy, dn)
       }
     }
 
@@ -2611,7 +3264,7 @@ function(input, output, session) {
 
       # check monthly or daily
       # station
-      time_station <- instat.data()[,ti_n]
+      time_station <- instat.data()[, ti_n]
       if (length(time_station) > 500) (time_station <- time_station[1:500])
       mon_station  <- format(as.Date(time_station), "%m")
       year_station <- format(as.Date(time_station), "%Y")
@@ -2636,14 +3289,14 @@ function(input, output, session) {
 
       # extract data for chosen time step
       if (mmdm == "m" & mmdm_sat == "m") {
-        match_time   <- which(format(as.Date(instat.data()[,ti_n]),"%Y-%m") == format(as.Date(input$timestep),"%Y-%m"),arr.ind = TRUE)
+        match_time   <- which(format(as.Date(instat.data()[, ti_n]), "%Y-%m") == format(as.Date(input$timestep), "%Y-%m"), arr.ind = TRUE)
       } else {
-        match_time   <- which(instat.data()[,ti_n] == input$timestep,arr.ind = TRUE)
+        match_time   <- which(instat.data()[, ti_n] == input$timestep, arr.ind = TRUE)
       }
 
-      lon_station  <- instat.data()[,lo_n][match_time]
-      lat_station  <- instat.data()[,la_n][match_time]
-      data_station <- instat.data()[,da_n][match_time]
+      lon_station  <- instat.data()[, lo_n][match_time]
+      lat_station  <- instat.data()[, la_n][match_time]
+      data_station <- instat.data()[, da_n][match_time]
 
       # delete NAs
       dummy <- !is.na(data_station)
@@ -2670,11 +3323,11 @@ function(input, output, session) {
           lon2 <- lon[lon_limit]
           lat2 <- lat[lat_limit]
 
-          pos <- sp::SpatialPoints(cbind(lon_station[istation],lat_station[istation]), proj4string = sp::CRS("+proj=longlat +datum=WGS84"))
+          pos <- sp::SpatialPoints(cbind(lon_station[istation], lat_station[istation]), proj4string = sp::CRS("+proj=longlat +datum=WGS84"))
           dum_dist <- 1000
           for (i in seq_along(lon2)) {
             for (j in seq_along(lat2)) {
-              dist <- sp::spDistsN1(pos, c(lon2[i],lat2[j]), longlat = FALSE)
+              dist <- sp::spDistsN1(pos, c(lon2[i], lat2[j]), longlat = FALSE)
               if (dist <= dum_dist) {
                 dum_dist <- dist
                 dumi <- i
@@ -2688,639 +3341,15 @@ function(input, output, session) {
         }
 
         if (any(lon_limit) & any(lat_limit)) {
-          data_sat[istation] <- visualizeDataTimestep()[lon_limit,lat_limit]
+          data_sat[istation] <- visualizeDataTimestep()[lon_limit, lat_limit]
           # data_sat[istation] <- visualizeVariables()$data[lon_limit,lat_limit,which(visualizeVariables()$date.time == input$timestep,arr.ind = TRUE)]
         }
       }
 
-      cd <- data.frame(data_station,data_sat,lon_station,lat_station)
+      cd <- data.frame(data_station, data_sat, lon_station, lat_station)
       cd
     } # end if lo_n,la_n,ti_n,da_n
   })
-
-   # Function for getting colors. Either the basic color schemes or from colorspace.
-  getColors <- function(useColorspace = FALSE) {
-      bpy <- eval(parse(text = "colorspace:::bpy"))
-      idx <- which(rownames(palettes) == input$PAL)
-      name   <- input$PAL
-      curPAL <- as.list(palettes[idx,])
-      if ( length(idx) == 0 ) {
-        idx <- which(rownames(palettes) == "sunny")
-        name   <- "sunny"
-        curPAL <- as.list(palettes[idx,])
-      }
-
-      if ( curPAL$type == "base" ) {
-        pal <- eval(parse(text = tolower(name)))
-      } else if ( curPAL$type == "more" ) {
-        sunny <- grDevices::colorRampPalette(c("black",
-                                               "#3a0303",
-                                               "#640000",
-                                               "#981800",
-                                               "#ca4b00",
-                                               "#fc7f01",
-                                               "#ffb234",
-                                               "#ffe566",
-                                               "#ffff98",
-                                               "#ffffcb",
-                                               "white"))
-        tim.colors <- fields::tim.colors
-        pal <- eval(parse(text = tolower(name)))
-      } else {
-        curPAL$reverse <- FALSE
-        pal <- do.call(colorspace:::GetPalette, curPAL)
-      }
-
-      colorbar <- pal(input$num_brk)
-
-      if ( input$reverse ) {
-        colorbar <- rev(colorbar)
-      }
-
-      return(colorbar)    
-  }
-  # A function to create the plot in visualize.
-  render_plot <- function(plot_rinstat) {
-    # A temp file to save the output.
-    # This file will be removed later by renderImage
-    outfile <- tempfile(fileext = '.png')
-    # Do not know where this is needed. Seems to me that it is not used.
-    # breaks <- seq(input$num_rmin, input$num_rmax, length.out = (input$num_tick))
-    tlab <- break_num(input$num_tick,
-                      input$num_tick,
-                      input$num_rmin,
-                      input$num_rmax,
-                      visualizeDataMax())
-    xtick  <- grDevices::axisTicks(lon_bounds(), log = FALSE)
-    ytick  <- grDevices::axisTicks(lat_bounds(), log = FALSE)
-    xlab <-
-      unlist(lapply(xtick, function(x)
-        ifelse(x < 0,
-               paste0(abs(x), " W"), ifelse(x > 0, paste0(abs(x), " E"), x))))
-    ylab <-
-      unlist(lapply(ytick, function(x)
-        ifelse(
-          x < 0, paste0(abs(x), " S"),
-          ifelse(x > 0, paste0(abs(x), " N"), x)
-        )))
-
-    if (min(xtick) == round(lon_bounds()[1])) {
-      xlab[1] <- " "
-    }
-    if (max(xtick) == round(lon_bounds()[2])) {
-      xlab[length(xlab)] <- " "
-    }
-    if (min(ytick) == round(lat_bounds()[1])) {
-      ylab[1] <- " "
-    }
-    if (max(ytick) == round(lat_bounds()[2])) {
-      ylab[length(ylab)] <- " "
-    }
-
-    # If rectangular projection
-    if (input$proj == "rect") {
-      # Use colorspace pallete
-      col <- getColors(useColorspace = input$useColorspace)
-
-      iwidth  <- imagewidth()
-      iheight <- imageheight()
-      grDevices::png(outfile, width = iwidth, height = iheight)
-      graphics::par(cex = textsize)
-
-      # Only set if error in plot.new():Figure Margins too large
-      par(mar = c(2,2,2.6,2))
-
-      fields::image.plot(
-        visualizeVariables()$lon,
-        visualizeVariables()$lat,
-        visualizeDataTimestep(),
-        main = input$text1,
-        xlab = " ",
-        ylab = " ",
-        xlim = lon_bounds(),
-        ylim = lat_bounds(),
-        zlim = c(input$num_rmin, input$num_rmax),
-        col = col,
-        axis.args = list(
-          cex.axis = 1,
-          at = as.numeric(tlab[tlab != ""]),
-          labels = tlab[tlab != ""],
-          mgp = c(1, 0.4, 0),
-          tck = c(-0.3)
-        ),
-        legend.lab = input$text3,
-        legend.line = -2,
-        axes = FALSE
-      )
-
-      # na.color in global.R
-      graphics::image(
-        visualizeVariables()$lon,
-        visualizeVariables()$lat,
-        array(1:2, dim(visualizeDataTimestep())),
-        xlab = " ",
-        ylab = " ",
-        col = na.color,
-        axes = FALSE,
-        xlim = lon_bounds(),
-        ylim = lat_bounds(),
-        add = TRUE
-      )
-
-      graphics::image(
-        visualizeVariables()$lon,
-        visualizeVariables()$lat,
-        visualizeDataTimestep(),
-        xlab = " ",
-        ylab = " ",
-        xlim = lon_bounds(),
-        ylim = lat_bounds(),
-        zlim = c(input$num_rmin, input$num_rmax),
-        col = col,
-        axes = FALSE,
-        add = TRUE
-      )
-
-      if (!as.logical(input$int)) {
-        maps::map(
-          "world",
-          add = TRUE,
-          interior = FALSE,
-          resolution = 0,
-          col = bordercolor,
-          lwd = linesize
-        )
-      }
-
-      # linesize, bordercolor, plot_grid, and grid_col in global.R
-      if (as.logical(input$int)) {
-        raster::plot(world,
-                     add = TRUE,
-                     lwd = linesize,
-                     col = bordercolor)
-      }
-
-      if (plot_grid) {
-        graphics::grid(NULL, NULL, lty = 3, col = grid_col)
-      }
-      graphics::axis(
-        1,
-        mgp = c(0, -2.5, 0),
-        tck = c(0.01),
-        col.axis = bordercolor,
-        cex.axis = 0.8 * textsize,
-        at = xtick,
-        labels = xlab
-      )
-      graphics::axis(
-        2,
-        mgp = c(0, -2.5, 0),
-        tck = c(0.01),
-        las = 1,
-        col.axis = bordercolor,
-        cex.axis = 0.8 * textsize,
-        at = ytick,
-        labels = ylab
-      )
-      graphics::box(col = bordercolor, lwd = linesize)
-
-      if (input$location) {
-        if (length(lon_loc_vec()) > 0 &&
-            length(lon_loc_vec()) == length(lat_loc_vec()) &&
-            length(lon_loc_vec()) == length(name_loc_vec())) {
-          for (i in seq_along(lon_loc_vec())) {
-            graphics::points(lon_loc_vec()[i],
-                             lat_loc_vec()[i],
-                             pch = 16,
-                             col = bordercolor)
-            graphics::text(
-              lon_loc_vec()[i],
-              lat_loc_vec()[i],
-              name_loc_vec()[i],
-              pos = 1,
-              col = bordercolor,
-              cex = textsize
-            )
-          }
-        }
-      }
-
-      graphics::mtext(input$text2)
-      graphics::mtext(visualizeVariables()$copyrightText, side = 1, adj = 1)
-
-      # plot R-Instat
-      if (plot_rinstat) {
-        vec <- seq(input$num_rmin, input$num_rmax, length.out = input$num_brk + 1)
-        data_station <- co.data()$data_station
-        lon_station  <- co.data()$lon_station
-        lat_station  <- co.data()$lat_station
-        data_station[data_station >= input$num_rmax] <- input$num_rmax
-        data_station[data_station <= input$num_rmin] <- input$num_rmin
-        for (i in seq_along(data_station)) {
-          point_col <- col[findInterval(data_station[i], vec, all.inside = TRUE)]
-          graphics::points(
-            lon_station[i],
-            lat_station[i],
-            pch = 21,
-            bg = point_col,
-            col = "gray30",
-            cex = 3,
-            lwd = 2
-          )
-        }
-      }
-
-      on.exit(grDevices::dev.off())
-    }
-
-    # If orthographic projection
-    if (input$proj == "ortho") {
-      # prepare plot
-      ori  <- c(input$xort, input$yort, input$rort)             #orientation
-      nx <- length(visualizeVariables()$lon)
-      ny <- length(visualizeVariables()$lat)
-      landcol  <- "navajowhite3"
-      oceancol <- "cadetblue3"
-      outcol   <- "cornsilk4"
-
-      rep.row <- function(x, n) {
-        matrix(rep(x, each = n), nrow = n)
-      }
-
-      lonv  <- replicate(length(visualizeVariables()$lat), visualizeVariables()$lon)
-      latv  <- rep.row(visualizeVariables()$lat, length(visualizeVariables()$lon))
-      datav <-
-        as.vector(visualizeDataTimestep())
-
-      a <-
-        mapproj::mapproject(
-          x = lonv,
-          y = latv,
-          projection = "orthographic",
-          orientation = ori
-        )
-      m <- maps::map("world", plot = FALSE)
-
-      # filter Nas
-      if (sum(is.na(a$x)) > 0 | sum(is.na(a$y)) > 0) {
-        dummy <- NULL
-        dummy <- !is.na(a$x)
-        a$x   <- a$x[dummy]
-        a$y   <- a$y[dummy]
-        datav <- datav[dummy]
-        dummy <- NULL
-        dummy <- !is.na(a$y)
-        a$x   <- a$x[dummy]
-        a$y   <- a$y[dummy]
-        datav <- datav[dummy]
-      }
-
-      # define grid factors
-      xr <- abs(range(visualizeVariables()$lon, na.rm = TRUE)[1]) + abs(range(visualizeVariables()$lon, na.rm = TRUE)[2])
-      yr <- abs(range(visualizeVariables()$lat, na.rm = TRUE)[1]) + abs(range(visualizeVariables()$lat, na.rm = TRUE)[2])
-      l1 <- 3.1  # max value for nx/xf
-      l2 <- 2.0  # max value for ny/yf
-
-      x1 <- c(40, 360)
-      y1 <- c(1, l1)
-      c1 <- stats::lm(y1 ~ x1)$coeff[[1]]
-      c2 <- stats::lm(y1 ~ x1)$coeff[[2]]
-
-      if (xr > 40 & xr <= 360) {
-        xf <- c2 * xr + c1
-        xf <- round(xf, digits = 1)
-      } else {
-        xf <- 1
-      }
-
-      x1 <- c(40, 180)
-      y1 <- c(1, l2)
-      c1 <- stats::lm(y1 ~ x1)$coeff[[1]]
-      c2 <- stats::lm(y1 ~ x1)$coeff[[2]]
-
-      if (yr > 40 & yr <= 180) {
-        yf <- c2 * yr + c1
-        yf <- round(yf, digits = 1)
-      } else {
-        yf <- 1
-      }
-
-      iwidth  <- 800
-      iheight <- 800
-
-      # Get colors
-      pcol <- getColors(useColorspace = input$useColorspace)
-
-      tlab <- break_num(input$num_tick,
-                        input$num_tick,
-                        input$num_rmin,
-                        input$num_rmax,
-                        visualizeDataMax())
-
-      # Plot orthographic image
-      grDevices::png(outfile, width = iwidth, height = iheight)
-
-      fields::quilt.plot(
-        a$x,
-        a$y,
-        datav,
-        xlim = c(-1, 1),
-        ylim = c(-1, 1),
-        nx = nx / xf,
-        ny = ny / yf,
-        xlab = " ",
-        ylab = " ",
-        main = input$text1,
-        col = pcol,
-        axis.args = list(
-          cex.axis = 1,
-          at = as.numeric(tlab[tlab != ""]),
-          labels = tlab[tlab != ""],
-          mgp = c(1, 0.4, 0),
-          tck = c(-0.3)
-        ),
-        legend.lab = input$text3,
-        legend.line = -2,
-        axes = FALSE
-      )
-
-      graphics::polygon(
-        sin(seq(0, 2 * pi, length.out = 100)),
-        cos(seq(0, 2 * pi, length.out = 100)),
-        col = oceancol,
-        border = grDevices::rgb(1, 1, 1, 0.5),
-        lwd = 1
-      )
-      suppressWarnings(
-        maps::map(
-          "world",
-          projection = "orthographic",
-          orientation = ori,
-          add = TRUE,
-          interior = FALSE
-          ,
-          fill = TRUE,
-          col = landcol,
-          lwd = linesize,
-          resolution = 0,
-          border = NA
-        )
-      )
-      fields::quilt.plot(
-        a$x,
-        a$y,
-        datav,
-        xlim = c(-1, 1),
-        ylim = c(-1, 1),
-        nx = nx / xf,
-        ny = ny / yf,
-        xlab = " ",
-        ylab = " ",
-        main = input$text1,
-        col = pcol,
-        axis.args = list(
-          cex.axis = 1,
-          at = as.numeric(tlab[tlab != ""]),
-          labels = tlab[tlab != ""],
-          mgp = c(1, 0.4, 0),
-          tck = c(-0.3)
-        ),
-        legend.lab = input$text3,
-        legend.line = -2,
-        axes = FALSE,
-        add = TRUE
-      )
-      # Plot borders
-      if (!as.logical(input$int)) {
-        suppressWarnings(
-          maps::map(
-            "world",
-            projection = "orthographic",
-            orientation = ori,
-            add = TRUE,
-            interior = FALSE,
-            col = outcol,
-            lwd = linesize,
-            resolution = 0
-          )
-        )
-      } else {
-        suppressWarnings(
-          maps::map(
-            "world",
-            projection = "orthographic",
-            orientation = ori,
-            add = TRUE,
-            interior = TRUE,
-            col = bordercolor,
-            lwd = linesize,
-            resolution = 0
-          )
-        )
-      }
-      if (plot_grid) {
-        mapproj::map.grid(
-          m,
-          nx = 18,
-          ny = 9,
-          lty = 3,
-          col = grid_col,
-          cex = linesize
-        )
-      }
-      graphics::mtext(input$text2)
-      graphics::mtext(visualizeVariables()$copyrightText, side = 1, adj = 1)
-
-      on.exit(grDevices::dev.off())
-    }
-
-    # Return a list containing the filename
-    return(
-      list(
-        src = outfile,
-        contentType = 'image/png',
-        width = iwidth,
-        height = iheight,
-        alt = "This is alternate text"
-      )
-    )
-  }
-
-  # Function to create the country plot.
-  getRegionPlot <- function(infile) {
-
-    iwidth  <- imagewidth()
-    iheight <- imageheight()
-    outfile <- tempfile(fileext = '.png')
-
-    if (input$division == "COUNTRY") {
-      region <- countriesHigh[countriesHigh$ADMIN == input$region,]
-    } else {
-      region <- region_data()[region_data()[[input$division]] == input$region,]
-    }
-
-    grd <- sp::makegrid(region)
-    grd_pts <- sp::SpatialPoints(coords = grd, proj4string = sp::CRS(sp::proj4string(region)))
-    grd_pts_in <- grd_pts[region, ]
-
-    lon1 <- min(grd[,1])
-    lon2 <- max(grd[,1])
-    lat1 <- min(grd[,2])
-    lat2 <- max(grd[,2])
-
-    # Is guaranteed to be of dimension 1 here.
-    nc <- ncdf4::nc_open(infile)
-    var <- names(nc$var)
-    var <- subset(var, !(var %in% c("lat","lon","time_bnds","nb2","time","sig")))
-
-    ncdf4::nc_close(nc)
-
-
-    #nc_path_visualize_orig(nc_path_visualize)
-    tmp_outfile_ctry <- file.path(userDir, paste(input$region, basename(nc_path_visualize()), sep = "_"))
-    outfile_ctry(tmp_outfile_ctry)
-
-    if(!file.exists(outfile_ctry())){
-      cmsaf::sellonlatbox(var,infile,tmp_outfile_ctry,lon1,lon2,lat1,lat2,overwrite = TRUE)
-    }
-
-    nc <- ncdf4::nc_open(tmp_outfile_ctry)
-
-    lon1 <- sp::coordinates(grd_pts_in)[,1]
-    lat1 <- sp::coordinates(grd_pts_in)[,2]
-
-    lon <- ncdf4::ncvar_get(nc,"lon")
-    lat <- ncdf4::ncvar_get(nc,"lat")
-
-    #target <- ncdf4::ncvar_get(nc, var)
-
-    dlon <- 0.05
-    dlat <- 0.05
-
-    out <- NULL
-
-    target_lon  <- NULL
-    target_lat  <- NULL
-    target_x <- NULL
-    target_y <- NULL
-    target_data <- NULL
-
-    target2 <- array(NA, dim = c(length(lon),length(lat)))
-
-    dlon <- abs(lon[1] - lon[2])
-    dlat <- abs(lat[1] - lat[2])
-
-    for (n in seq_along(lon1)) {
-      lon_limit <- which(lon >= (lon1[n] - dlon) & lon <= (lon1[n] + dlon))
-      lat_limit <- which(lat >= (lat1[n] - dlat) & lat <= (lat1[n] + dlat))
-
-      if (!(any(lon_limit) & any(lat_limit))) {
-        out <- append(out,n)
-        next()
-      }
-
-      lon2 <- lon[lon_limit]
-      lat2 <- lat[lat_limit]
-
-      pos <- sp::SpatialPoints(cbind(lon1[n],lat1[n]), proj4string = sp::CRS("+proj=longlat +datum=WGS84"))
-      dum_dist <- 1000
-      for (i in seq_along(lon2)) {
-        for (j in seq_along(lat2)) {
-          dist <- sp::spDistsN1(pos, c(lon2[i],lat2[j]), longlat = FALSE)
-          if (dist <= dum_dist) {
-            dum_dist <- dist
-            dumi <- i
-            dumj <- j
-          }
-        }
-      }
-
-      lon_limit <- which(lon == lon2[dumi])
-      lat_limit <- which(lat == lat2[dumj])
-
-      if (!(any(lon_limit) & any(lat_limit))){
-        stop("Coordinates outside of the domain.")
-      }
-
-      target_lon <- append(target_lon,lon[lon_limit])
-      target_lat <- append(target_lat,lat[lat_limit])
-      target_x <- append(target_x,lon_limit)
-      target_y <- append(target_y,lat_limit)
-
-      time_index <- match(input$timestep, visualizeVariables()$date.time)
-
-      target <- ncdf4::ncvar_get(nc,var,start = c(lon_limit,lat_limit,time_index),count = c(1,1,1))
-      target_data <- append(target_data,target)
-    } # end for
-
-    ncdf4::nc_close(nc)
-    # file.remove(tmp_outfile_ctry)
-
-    Longitude <- sort(unique(target_lon))
-    Latitude <- sort(unique(target_lat))
-
-    dm <- cbind(target_x,sort(target_y))
-    target2[dm] <- target_data
-    target3 <- target2[which(lon %in% target_lon),which(lat %in% target_lat)]
-
-    col <- getColors(useColorspace = input$useColorspace)
-    
-    grDevices::png(outfile, width = iwidth, height = iheight)
-    # Only set if error in plot.new():Figure Margins too large
-    graphics::par(mar = c(2.5,2,2.6,1))
-
-    fields::image.plot(Longitude,
-                       Latitude,
-                       target3,
-                       main = input$text1,
-                       zlim = c(input$num_rmin, input$num_rmax),
-                       col = col,
-                       legend.lab = input$text3,
-                       legend.line = -2,
-                       axes = FALSE)
-    if (plot_grid) {
-      graphics::grid(NULL, NULL, lty = 3, col = grid_col)
-    }
-
-    graphics::mtext(input$text2)
-    graphics::mtext(visualizeVariables()$copyrightText, side = 1, adj = 1)
-
-    raster::plot(region, add = TRUE)
-
-    if (input$location) {
-      if (length(lon_loc_vec()) > 0 &&
-          length(lon_loc_vec()) == length(lat_loc_vec()) &&
-          length(lon_loc_vec()) == length(name_loc_vec())) {
-        for (i in seq_along(lon_loc_vec())) {
-          graphics::points(lon_loc_vec()[i],
-                           lat_loc_vec()[i],
-                           pch = 16,
-                           col = bordercolor)
-
-          graphics::text(
-            lon_loc_vec()[i],
-            lat_loc_vec()[i],
-            name_loc_vec()[i],
-            pos = 1,
-            col = bordercolor,
-            cex = textsize
-          )
-        }
-      }
-    }
-    on.exit(grDevices::dev.off())
-
-    # Return a list containing the filename
-    return(
-      list(
-        src = outfile,
-        contentType = 'image/png',
-        width = iwidth,
-        height = iheight,
-        alt = "This is alternate text"
-      )
-    )
-  }
 
   # A function to validate all numeric inputs.
   # This should only be called knowing all required inputs exist!
@@ -3425,9 +3454,9 @@ function(input, output, session) {
     req(abs(input$lon_loc) <= 180)
     req(abs(input$lat_loc) <= 90)
     if (!is.element(input$lon_loc, lon_loc_vec()) || !is.element(input$lat_loc, lat_loc_vec())) {
-      lon_loc_vec( append(lon_loc_vec(),input$lon_loc) )
-      lat_loc_vec( append(lat_loc_vec(),input$lat_loc) )
-      name_loc_vec( append(name_loc_vec(),input$name_loc) )
+      lon_loc_vec(append(lon_loc_vec(), input$lon_loc))
+      lat_loc_vec(append(lat_loc_vec(), input$lat_loc))
+      name_loc_vec(append(name_loc_vec(), input$name_loc))
     }
   }, ignoreInit = TRUE)
 
@@ -3450,47 +3479,33 @@ function(input, output, session) {
     if (reversedDimensions$latReverse) {
       tmp <- tmp[, rev(seq_len(length(visualizeVariables()$lat)))]
     }
-    visualizeDataTimestep( tmp )
+    visualizeDataTimestep(tmp)
   })
 
   ## Colorpalette Stuff ##
-  palettes <- colorspace:::GetPaletteConfig(gui = TRUE)
-
-  observeEvent(input$typ, {
-    x <- list()
-    if ( grepl("^base$", input$typ) ) {
-      shinyjs::disable("registerpalettebutton")
-      shinyjs::disable("registerpalettename")
-    } else {
-      shinyjs::enable("registerpalettebutton")
-      shinyjs::enable("registerpalettename")
-    }
-    for ( i in which(palettes$typ == input$typ) )
-      x[[sprintf("%s",rownames(palettes)[i])]] <- rownames(palettes)[i]
-    updateSelectInput(session, "PAL", choices = x)
-  })
+  palettes <- GetPaletteConfig(gui = TRUE)
 
   # ----------------------------------------------------------------
   # Getting currently selected color scheme
   # ----------------------------------------------------------------
-  palettes <- colorspace:::GetPaletteConfig(gui = TRUE)
+  palettes <- GetPaletteConfig(gui = TRUE)
   names(palettes) <- tolower(names(palettes))
-  names(palettes)[names(palettes) == 'typ'] <- "type"
+  names(palettes)[names(palettes) == "typ"] <- "type"
 
   # add more color schemes
-  new_row <- data.frame("more",NA,NA,NA,NA,NA,NA,NA,NA,NA,1)
+  new_row <- data.frame("more", NA, NA, NA, NA, NA, NA, NA, NA, NA, 1)
   names(new_row) <- names(palettes)
-  palettes <- rbind(palettes,new_row)
+  palettes <- rbind(palettes, new_row)
   rownames(palettes)[75] <- "tim.colors"
 
-  palettes <- rbind(palettes,new_row)
+  palettes <- rbind(palettes, new_row)
   rownames(palettes)[76] <- "sunny"
 
   x <- list()
-  for (i in 1:nrow(palettes)) {
-    x[[sprintf("%s",rownames(palettes)[i])]] <- rownames(palettes)[i]
-    updateSelectInput(session, "PAL", choices = x,selected = "sunny")
+  for (i in seq_len(nrow(palettes))) {
+    x[[sprintf("%s", rownames(palettes)[i])]] <- rownames(palettes)[i]
   }
+  updateSelectInput(session, "PAL", choices = x, selected = "sunny")
 
   # Debouncing
   db_xort  <- shiny::debounce(reactive({input$xort}),  750)
@@ -3511,6 +3526,66 @@ function(input, output, session) {
   db_text3 <- shiny::debounce(reactive({input$text3}), 750)
   db_text1 <- shiny::debounce(reactive({input$text1}), 1000)
 
+  getPlot_1d <- reactive({
+    req(readyToPlot())
+
+    # Triggers and requirements
+    req(is.character(db_text1_1d()))
+    req(db_sliderx())
+    req(db_slidery())
+    req(db_integer())
+    req(db_checkGroup_type())
+    c(db_trend())
+    c(db_analyze_timeseries())
+    req(db_ticknumber())
+    req(db_dateformat())
+    c(db_text2_1d())
+
+    # Catch data is error exception
+    if (class(visualizeVariables()$data) == "try-error") {
+      showModal(modalDialog(
+        h4("We can't handle your file at the moment. Please try another file."),
+        br(),
+        title = "Sorry!",
+        size = "l"
+      ))
+
+      # Silently leave.
+      req(FALSE)
+    }
+
+    isolate({
+      res_plot <- try(cmsafvis::render_plot_1d(fileExtension = ".png",
+                                               visualizeVariables = visualizeVariables(),
+                                               ticknumber = input$ticknumber,
+                                               dateformat = input$dateformat,
+                                               analyze_timeseries = input$analyze_timeseries,
+                                               addTrend = input$trend,
+                                               sliderx = input$sliderx,
+                                               slidery = input$slidery,
+                                               checkGroup_type = input$checkGroup_type,
+                                               imagewidth = imagewidth(),
+                                               imageheight = imageheight(),
+                                               text1_1d = input$text1_1d,
+                                               text2_1d = input$text2_1d,
+                                               textsize = textsize,
+                                               linesize = linesize,
+                                               col = input$integer))
+    })
+
+    if (class(res_plot) != "try-error") {
+      return(res_plot)
+    } else {
+      showModal(modalDialog(
+        br(),
+        h3("Something went wrong while creatin 1D Plot."),
+        title = "Error.",
+        size = "l"
+      ))
+      req(NULL)
+    }
+  })
+
   # A reactive, throttled function for generating the plot.
   getPlot_2d <- reactive({
     req(readyToPlot())
@@ -3522,8 +3597,8 @@ function(input, output, session) {
     req(db_visualizeDataMax())             # max data (not sure why want to trigger this?)
 
     # Isolated requirements
-    isolate( req(lon_bounds()) )    # Require this to prevent error message
-    isolate( req(lat_bounds()) )    # However, do not trigger on change
+    isolate(req(lon_bounds()))    # Require this to prevent error message
+    isolate(req(lat_bounds()))    # However, do not trigger on change
     # isolate( req(imagewidth()) )    # image width (triggering is done by lat_lon_trigger)
     # isolate( req(imageheight()) )   # image height (triggering is done by lat_lon_trigger)
 
@@ -3598,7 +3673,7 @@ function(input, output, session) {
 
       # Validate numeric inputs
       validity <- validNumericInputs()
-      if ( validity$valid != TRUE ) {
+      if (validity$valid != TRUE) {
         # show message
         shinyjs::hide("spinner_plot1")
         shinyjs::enable("backToSetup")
@@ -3617,9 +3692,74 @@ function(input, output, session) {
       }
 
       if (input$plot_region) {
-        res <- try( ls <- getRegionPlot(infile = isolate(nc_path_visualize())) )
+        res <- try(ls <- cmsafvis::render_region_plot(infile = isolate(nc_path_visualize()),
+                                                      visualizeVariables = visualizeVariables(),
+                                                      visualizeDataMax = visualizeDataMax(),
+                                                      lon_bounds = lon_bounds(),
+                                                      lat_bounds = lat_bounds(),
+                                                      lon_loc_vec = lon_loc_vec(),
+                                                      lat_loc_vec = lat_loc_vec(),
+                                                      name_loc_vec = name_loc_vec(),
+                                                      division = input$division,
+                                                      selectedRegion = input$region,
+                                                      region_data = region_data(),
+                                                      timestep = input$timestep,
+                                                      num_tick = input$num_tick,
+                                                      num_rmin = input$num_rmin,
+                                                      num_rmax = input$num_rmax,
+                                                      location = input$location,
+                                                      text1 = input$text1,
+                                                      text2 = input$text2,
+                                                      text3 = input$text3,
+                                                      PAL = input$PAL,
+                                                      palettes = palettes,
+                                                      num_brk = input$num_brk,
+                                                      reverse = input$reverse,
+                                                      textsize = textsize,
+                                                      bordercolor = bordercolor,
+                                                      plot_grid = plot_grid,
+                                                      grid_col = grid_col,
+                                                      image_def = image_def,
+                                                      ihsf = ihsf))
       } else {
-        res <- try( ls <- render_plot(plot_rinstat = plot_rinstat) )
+        res <- try(ls <- cmsafvis::render_plot(plot_rinstat = input$plot_rinstat,
+                                               visualizeVariables = visualizeVariables(),
+                                               visualizeDataTimestep = visualizeDataTimestep(),
+                                               nc_path_visualize = nc_path_visualize(),
+                                               visualizeDataMax = visualizeDataMax(),
+                                               lon_bounds = lon_bounds(),
+                                               lat_bounds = lat_bounds(),
+                                               lon_loc_vec = lon_loc_vec(),
+                                               lat_loc_vec = lat_loc_vec(),
+                                               name_loc_vec = name_loc_vec(),
+                                               timestep = input$timestep,
+                                               num_tick = input$num_tick,
+                                               num_rmin = input$num_rmin,
+                                               num_rmax = input$num_rmax,
+                                               num_brk = input$num_brk,
+                                               co.data = co.data(),
+                                               proj = input$proj,
+                                               imagewidth = imagewidth(),
+                                               imageheight = imageheight(),
+                                               xort = input$xort,
+                                               yort = input$yort,
+                                               rort = input$rort,
+                                               slider1 = input$slider1,
+                                               slider2 = input$slider2,
+                                               location = input$location,
+                                               text1 = input$text1,
+                                               text2 = input$text2,
+                                               text3 = input$text3,
+                                               int = input$int,
+                                               textsize = textsize,
+                                               bordercolor = bordercolor,
+                                               linesize = linesize,
+                                               na.color = na.color,
+                                               PAL = input$PAL,
+                                               palettes = palettes,
+                                               reverse = input$reverse,
+                                               plot_grid = plot_grid,
+                                               grid_col = grid_col))
       }
     })
     if (class(res) == "try-error") {
@@ -3670,869 +3810,10 @@ function(input, output, session) {
 
   # Copied from app-4
   output$myImage_1d <- renderImage({
-    req(readyToPlot())
-
-    # Triggers and requirements
-    req(is.character(db_text1_1d()))
-    req(db_sliderx())
-    req(db_slidery())
-    req(db_integer())
-    req(db_checkGroup_type())
-    c(db_trend())
-    c(db_analyze_timeseries())
-    req(db_ticknumber())
-    req(db_dateformat())
-    c(db_text2_1d())
-
-    # Catch data is error exception
-    if (class(visualizeVariables()$data) == "try-error") {
-      showModal(modalDialog(
-        h4("We can't handle your file at the moment. Please try another file."),
-        br(),
-        title = "Sorry!",
-        size = "l",
-      ))
-
-      # Silently leave.
-      req(FALSE)
-    }
-
-    # A temp file to save the output.
-    outfile <- tempfile(fileext = '.png')
-
-    isolate({
-      # prepare ticks and date formats
-      dum_tick <- seq(1,length(visualizeVariables()$date.time), length.out = input$ticknumber)
-      dum_tick2 <- NULL
-      for (j in 2:length(dum_tick)) {
-        dummy <- seq(dum_tick[j - 1], dum_tick[j], length.out = 4)
-        if (j > 2 & j != length(dum_tick)) (dummy <- dummy[2:4])
-        dum_tick2 <- append(dum_tick2,dummy)
-      }
-      if (input$dateformat == 1) (date.lab <- format(visualizeVariables()$date.time[dum_tick], "%Y"))
-      if (input$dateformat == 2) (date.lab <- format(visualizeVariables()$date.time[dum_tick], "%Y-%m"))
-      if (input$dateformat == 3) (date.lab <- format(visualizeVariables()$date.time[dum_tick], "%Y-%m-%d"))
-
-      if (as.logical(input$analyze_timeseries)) {
-        # Set the size of the output window
-        iwidth  <- 650
-        iheight <- 800
-
-        grDevices::png(outfile, width = iwidth, height = iheight)
-        # Analyze Timeseries
-
-        # Set the number of rows and columns
-        nrow <- 3
-        ncol <- 2
-
-        field <- visualizeVariables()$data[,,input$sliderx[1]:input$sliderx[2]]
-        date.time2 <- visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]]
-
-        # Create vectors of the months and years, respectively
-        timemonth <- format(date.time2, "%m")
-        timeyear <- format(date.time2, "%Y")
-        nt <- length(date.time2)
-
-        # Create vectors of the months and years, respectively
-        timemonth.in <- format(date.time2,"%m")
-        timeyear.in <- format(date.time2,"%Y")
-        startyear <- timeyear.in[1]
-        startmonth <- timemonth.in[1]
-
-        title <- visualizeVariables()$varname
-        varlabel <- paste0(title," [", visualizeVariables()$unit,"]")
-
-        # The function tapply is very useful for operations that
-        # operate along the time axis, e.g., calculating mean monthly values
-        field.monmean <- tapply(field,timemonth,mean,na.rm = TRUE)
-        field.monmax <- tapply(field,timemonth,max,na.rm = TRUE)
-        field.monmin <- tapply(field,timemonth,min,na.rm = TRUE)
-        field.monsd <- tapply(field,timemonth,stats::sd,na.rm = TRUE)
-
-        # Annual mean is only calculated if data for all 12 month are available
-        field.annmean <- tapply(field,timeyear,mean,na.rm = TRUE)
-        # Include only those years with 12 months on data
-        years <- dimnames(field.annmean)[[1]]
-        nyears <- length(years)
-        nmonth <- vector(mode = "numeric",length = nyears)
-        for (i in 1:nyears) {
-          nmonth[i] <- length(which(timeyear == years[i]))
-        }
-        ind <- which(nmonth < 12)
-        field.annmean[ind] <- NA
-
-        # Calculate anomalies
-        field.ano <- vector(mode = "numeric",length = nt)
-        field.relano <- vector(mode = "numeric",length = nt)
-        for (j in 1:nt) {
-          field.ano[j] <- field[j] - field.monmean[timemonth[j]]
-          field.relano[j] <- field.ano[j]/field.monsd[timemonth[j]]
-        }
-
-        # set the number of rows and columns of the plot
-        graphics::par(mfrow = c(nrow,ncol))
-
-        # Determine the min and max of the plotrange
-        pmin <- min(field,na.rm = TRUE)
-        pmax <- max(field,na.rm = TRUE)
-        drange <- pmax - pmin
-
-        #plot the data
-        graphics::plot(date.time2,field, ylab = varlabel, xlab = "",
-                       main = paste0(title,", ",format(visualizeVariables()$lat,digits = 4,nsmall = 2)," N, ",
-                                     format(visualizeVariables()$lon,digits = 4,nsmall = 2)," E"),
-                       ylim = c(pmin,pmax),type = "l")
-
-        # calculate the linear trend of the original data
-        x <- c(1:nt)
-        model <- stats::lm(field~x,na.action = stats::na.exclude)
-        graphics::lines(date.time2,stats::predict(model),col = input$integer, lwd = 2.0)
-        conf <- stats::confint(model, "x", level = 0.95)
-        trend <- model$coeff["x"] * 12.
-        lconf <- conf[1] * 12.
-        uconf <- conf[2] * 12
-
-        mean.out <- format(mean(field, na.rm = TRUE), digits = 3, nsmall =
-                             1)
-        trend.out <-
-          paste0(
-            "[",
-            format(lconf, digits = 2, nsmall = 2),
-            ",",
-            format(trend, digits = 2, nsmall = 2),
-            ",",
-            format(uconf, digits = 2, nsmall = 2),
-            "] "
-          )
-
-        # Determine the x-location of the text in date format
-        xtext <- as.Date(paste(startyear, startmonth, 01, sep = "-"))
-
-        # textsize can be found in global.R
-        graphics::text(
-          xtext,
-          pmax - 0.01 * drange,
-          paste("mean:", mean.out, visualizeVariables()$unit),
-          pos = 4,
-          cex = textsize
-        )
-        graphics::text(
-          xtext,
-          pmax - 0.08 * drange,
-          paste0("linear trend:", trend.out, visualizeVariables()$unit, "/yr"),
-          pos = 4,
-          cex = textsize
-        )
-
-        #--------------------------------------------------
-        #Plot the monthly mean seasonal cycle
-        # Changed this line (used to be months <- 1:12 but they don't always all exist.)
-        months <- unique(names(field.monmax))
-        # Determine the min and max of the plotrange
-        pmin <- min(field.monmin, na.rm = TRUE)
-        pmax <- max(field.monmax, na.rm = TRUE)
-
-        graphics::plot(
-          months,
-          field.monmax,
-          type = "n",
-          main = "Average Seasonal Cycle",
-          ylab = varlabel,
-          xlab = "Months",
-          ylim = c(pmin, pmax)
-        )
-        graphics::lines(months, field.monmax)
-        graphics::lines(months, field.monmin)
-        graphics::polygon(c(months, rev(months)), c(field.monmin, rev(field.monmax)), col =
-                            input$integer)
-        graphics::lines(months, field.monmean, lwd = 2)
-
-        #--------------------------------------------------
-        # Plot the monthly anomalies
-        pmin <- min(field.ano, na.rm = TRUE)
-        pmax <-
-          max(field.ano, na.rm = TRUE) + 0.15 * (max(field.ano, na.rm = TRUE) - min(field.ano, na.rm =
-                                                                                      TRUE))
-        drange <- pmax - pmin
-        graphics::plot(
-          date.time2,
-          field.ano,
-          ylab = varlabel,
-          xlab = "",
-          main = "Monthly anomalies",
-          ylim = c(pmin, pmax),
-          type = "l"
-        )
-        graphics::abline(h = 0, lwd = 1.0, col = "gray40")
-
-        # calculate the linear trend of the anomaly data
-        x <- c(1:nt)
-        model <- stats::lm(field.ano ~ x, na.action = stats::na.exclude)
-        graphics::lines(date.time2,
-                        stats::predict(model),
-                        col = input$integer,
-                        lwd = 2.0)
-        conf <- stats::confint(model, "x", level = 0.95)
-        trend <- model$coeff["x"] * 12.
-        lconf <- conf[1] * 12.
-        uconf <- conf[2] * 12
-
-        trend.out <-
-          paste0(
-            "[",
-            format(lconf, digits = 2, nsmall = 2),
-            ",",
-            format(trend, digits = 2, nsmall = 2),
-            ",",
-            format(uconf, digits = 2, nsmall = 2),
-            "] "
-          )
-
-        # Determine the x-location of the text in date format
-        xtext <- as.Date(paste(startyear, startmonth, 01, sep = "-"))
-
-        graphics::text(
-          xtext,
-          pmax - 0.01 * drange,
-          paste0("linear trend:", trend.out, visualizeVariables()$unit, "/yr"),
-          pos = 4,
-          cex = textsize
-        )
-
-
-        #--------------------------------------------------
-        # Boxplot of the time series
-        # Define the months as a categorical variable
-        month_cat <- factor(timemonth)
-        graphics::plot(month_cat,
-                       field,
-                       main = "Box Plot",
-                       ylab = varlabel,
-                       xlab = "Months")
-
-        #--------------------------------------------------
-        # Plot the annual means
-        graphics::plot(
-          as.integer(years) + 0.5,
-          field.annmean,
-          type = "p",
-          main = "Annual Means",
-          ylab = varlabel,
-          xlab = "",
-          pch = 19
-        )
-        graphics::abline(h = mean(field.annmean, na.rm = TRUE),
-                         lwd = 1.0,
-                         col = "gray40")
-
-        #--------------------------------------------------
-        # Plot a histogram of the data
-        hist_field <- graphics::hist(
-          field,
-          breaks = 20,
-          xlab = varlabel,
-          main = paste0("Histogram of ", title),
-          col = input$integer
-        )
-        graphics::box(col = "gray20", lwd = 1)
-
-        on.exit(grDevices::dev.off())
-      } else {
-        # Generate the PNG with different line types
-
-        # In the following textsize, and linesize can be found in global.R
-        if (input$checkGroup_type == 1) {
-          iwidth  <- imagewidth()
-          iheight <- imageheight()
-          grDevices::png(outfile, width = iwidth, height = iheight)
-          graphics::par(cex = textsize)
-          graphics::plot(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "l",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = "white",
-            main = input$text1_1d,
-            xlab = "time",
-            ylab = visualizeVariables()$ylabel,
-            axes = FALSE
-          )
-          graphics::abline(h = 0, lwd = 1, col = "gray")
-          graphics::grid(NA, NULL, lwd = 0.8)
-          graphics::abline(
-            v = visualizeVariables()$date.time,
-            col = "lightgray",
-            lty = 3,
-            lwd = 0.8
-          )
-          graphics::points(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "l",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = input$integer,
-            lwd = linesize
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = date.lab,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = FALSE,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::rug(
-            x = visualizeVariables()$date.time[dum_tick2],
-            ticksize = 0.015,
-            side = 1,
-            quiet = TRUE
-          )
-          graphics::axis(
-            side = 2,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 2,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20",
-            labels = FALSE
-          )
-          graphics::box(col = "gray20", lwd = 1)
-          if (as.logical(input$trend)) {
-            # calculate the linear trend
-            x <-
-              c(seq_along(visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]]))
-            model <-
-              stats::lm(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]] ~ x, na.action = stats::na.exclude)
-            graphics::lines(visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]],
-                            stats::predict(model),
-                            col = "gray20",
-                            lwd = linesize)
-            conf <- stats::confint(model, "x", level = 0.95)
-            trend <- model$coeff["x"] * 12.
-            lconf <- conf[1] * 12.
-            uconf <- conf[2] * 12
-
-            mean.out <-
-              format(mean(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE),
-                     digits = 3,
-                     nsmall = 1)
-            trend.out <-
-              paste0(
-                "[",
-                format(lconf, digits = 2, nsmall = 2),
-                ",",
-                format(trend, digits = 2, nsmall = 2),
-                ",",
-                format(uconf, digits = 2, nsmall = 2),
-                "] "
-              )
-            xtext <- as.Date(visualizeVariables()$date.time[input$sliderx[1]])
-
-            pmin <-
-              min(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE)
-            pmax <-
-              max(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE)
-            drange <- pmax - pmin
-            graphics::text(
-              xtext,
-              pmax - 0.01 * drange,
-              paste("mean:", mean.out, visualizeVariables()$unit),
-              pos = 4,
-              cex = textsize
-            )
-            graphics::text(
-              xtext,
-              pmax - 0.08 * drange,
-              paste0("linear trend:", trend.out, visualizeVariables()$unit, "/yr"),
-              pos = 4,
-              cex = textsize
-            )
-          }
-          graphics::mtext(input$text2_1d)
-          on.exit(grDevices::dev.off())
-        }
-
-        if (input$checkGroup_type == 2) {
-          iwidth  <- imagewidth()
-          iheight <- imageheight()
-          grDevices::png(outfile, width = iwidth, height = iheight)
-          graphics::par(cex = textsize)
-          graphics::plot(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "p",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = "white",
-            main = input$text1_1d,
-            xlab = "time",
-            ylab = visualizeVariables()$ylabel,
-            axes = FALSE
-          )
-          graphics::abline(h = 0, lwd = 1, col = "gray")
-          graphics::grid(NA, NULL, lwd = 0.8)
-          graphics::abline(
-            v = visualizeVariables()$date.time,
-            col = "lightgray",
-            lty = 3,
-            lwd = 0.8
-          )
-          graphics::points(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "p",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = input$integer,
-            lwd = linesize
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = date.lab,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = FALSE,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::rug(
-            x = visualizeVariables()$date.time[dum_tick2],
-            ticksize = 0.015,
-            side = 1,
-            quiet = TRUE
-          )
-          graphics::axis(
-            side = 2,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 2,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20",
-            labels = FALSE
-          )
-          graphics::box(col = "gray20", lwd = 1)
-          if (as.logical(input$trend)) {
-            # calculate the linear trend
-            x <-
-              c(seq_along(visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]]))
-            model <-
-              stats::lm(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]] ~ x, na.action = stats::na.exclude)
-            graphics::lines(visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]],
-                            stats::predict(model),
-                            col = "gray20",
-                            lwd = linesize)
-            conf <- stats::confint(model, "x", level = 0.95)
-            trend <- model$coeff["x"] * 12.
-            lconf <- conf[1] * 12.
-            uconf <- conf[2] * 12
-
-            mean.out <-
-              format(mean(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE),
-                     digits = 3,
-                     nsmall = 1)
-            trend.out <-
-              paste0(
-                "[",
-                format(lconf, digits = 2, nsmall = 2),
-                ",",
-                format(trend, digits = 2, nsmall = 2),
-                ",",
-                format(uconf, digits = 2, nsmall = 2),
-                "] "
-              )
-            xtext <- as.Date(visualizeVariables()$date.time[input$sliderx[1]])
-
-            pmin <-
-              min(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE)
-            pmax <-
-              max(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE)
-            drange <- pmax - pmin
-            graphics::text(
-              xtext,
-              pmax - 0.01 * drange,
-              paste("mean:", mean.out, visualizeVariables()$unit, sep = " "),
-              pos = 4,
-              cex = textsize
-            )
-            graphics::text(
-              xtext,
-              pmax - 0.08 * drange,
-              paste0("linear trend:", trend.out, visualizeVariables()$unit, "/yr"),
-              pos = 4,
-              cex = textsize
-            )
-          }
-          graphics::mtext(input$text2_1d)
-          on.exit(grDevices::dev.off())
-        }
-
-        if (input$checkGroup_type == 3) {
-          iwidth  <- imagewidth()
-          iheight <- imageheight()
-          grDevices::png(outfile, width = iwidth, height = iheight)
-          graphics::par(cex = textsize)
-          graphics::plot(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "o",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = "white",
-            main = input$text1_1d,
-            xlab = "time",
-            ylab = visualizeVariables()$ylabel,
-            axes = FALSE
-          )
-          graphics::abline(h = 0, lwd = 1, col = "gray")
-          graphics::grid(NA, NULL, lwd = 0.8)
-          graphics::abline(
-            v = visualizeVariables()$date.time,
-            col = "lightgray",
-            lty = 3,
-            lwd = 0.8
-          )
-          graphics::points(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "o",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = input$integer,
-            lwd = linesize
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = date.lab,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = FALSE,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::rug(
-            x = visualizeVariables()$date.time[dum_tick2],
-            ticksize = 0.015,
-            side = 1,
-            quiet = TRUE
-          )
-          graphics::axis(
-            side = 2,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 2,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20",
-            labels = FALSE
-          )
-          graphics::box(col = "gray20", lwd = 1)
-          if (as.logical(input$trend)) {
-            # calculate the linear trend
-            x <-
-              c(seq_along(visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]]))
-            model <-
-              stats::lm(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]] ~ x, na.action = stats::na.exclude)
-            graphics::lines(visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]],
-                            stats::predict(model),
-                            col = "gray20",
-                            lwd = linesize)
-            conf <- stats::confint(model, "x", level = 0.95)
-            trend <- model$coeff["x"] * 12.
-            lconf <- conf[1] * 12.
-            uconf <- conf[2] * 12
-
-            mean.out <-
-              format(mean(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE),
-                     digits = 3,
-                     nsmall = 1)
-            trend.out <-
-              paste0(
-                "[",
-                format(lconf, digits = 2, nsmall = 2),
-                ",",
-                format(trend, digits = 2, nsmall = 2),
-                ",",
-                format(uconf, digits = 2, nsmall = 2),
-                "] "
-              )
-            xtext <- as.Date(visualizeVariables()$date.time[input$sliderx[1]])
-
-            pmin <-
-              min(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE)
-            pmax <-
-              max(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE)
-            drange <- pmax - pmin
-            graphics::text(
-              xtext,
-              pmax - 0.01 * drange,
-              paste("mean:", mean.out, visualizeVariables()$unit, sep = " "),
-              pos = 4,
-              cex = textsize
-            )
-            graphics::text(
-              xtext,
-              pmax - 0.08 * drange,
-              paste0("linear trend:", trend.out, visualizeVariables()$unit, "/yr"),
-              pos = 4,
-              cex = textsize
-            )
-          }
-          graphics::mtext(input$text2_1d)
-          on.exit(grDevices::dev.off())
-        }
-
-        if (input$checkGroup_type == 4) {
-          iwidth  <- imagewidth()
-          iheight <- imageheight()
-          grDevices::png(outfile, width = iwidth, height = iheight)
-          graphics::par(cex = textsize)
-          graphics::plot(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "s",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = "white",
-            main = input$text1_1d,
-            xlab = "time",
-            ylab = visualizeVariables()$ylabel,
-            axes = FALSE
-          )
-          graphics::abline(h = 0, lwd = 1, col = "gray")
-          graphics::grid(NA, NULL, lwd = 0.8)
-          graphics::abline(
-            v = visualizeVariables()$date.time,
-            col = "lightgray",
-            lty = 3,
-            lwd = 0.8
-          )
-          graphics::points(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "s",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = input$integer,
-            lwd = linesize
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = date.lab,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = FALSE,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::rug(
-            x = visualizeVariables()$date.time[dum_tick2],
-            ticksize = 0.015,
-            side = 1,
-            quiet = TRUE
-          )
-          graphics::axis(
-            side = 2,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 2,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20",
-            labels = FALSE
-          )
-          graphics::box(col = "gray20", lwd = 1)
-          if (as.logical(input$trend))
-            (graphics::points(visualizeVariables()$date.time,
-                              fitted,
-                              type = "l",
-                              col = "gray20",
-                              lwd = linesize))
-          graphics::mtext(input$text2_1d)
-          on.exit(grDevices::dev.off())
-        }
-
-        if (input$checkGroup_type == 5) {
-          iwidth  <- imagewidth()
-          iheight <- imageheight()
-          grDevices::png(outfile, width = iwidth, height = iheight)
-          graphics::par(cex = textsize)
-          graphics::plot(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "h",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = "white",
-            main = input$text1_1d,
-            xlab = "time",
-            ylab = visualizeVariables()$ylabel,
-            axes = FALSE
-          )
-          graphics::abline(h = 0, lwd = 1, col = "gray")
-          graphics::grid(NA, NULL, lwd = 0.8)
-          graphics::abline(
-            v = visualizeVariables()$date.time,
-            col = "lightgray",
-            lty = 3,
-            lwd = 0.8
-          )
-          graphics::points(
-            visualizeVariables()$date.time,
-            visualizeVariables()$data,
-            type = "h",
-            xlim = visualizeVariables()$date.time[input$sliderx],
-            ylim = input$slidery,
-            col = input$integer,
-            lwd = linesize
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = date.lab,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 1,
-            at = visualizeVariables()$date.time[dum_tick],
-            labels = FALSE,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::rug(
-            x = visualizeVariables()$date.time[dum_tick2],
-            ticksize = 0.015,
-            side = 1,
-            quiet = TRUE
-          )
-          graphics::axis(
-            side = 2,
-            tck = -0.025,
-            col.ticks = "gray20",
-            col.axis = "gray20"
-          )
-          graphics::axis(
-            side = 2,
-            tck = 0.015,
-            col.ticks = "gray20",
-            col.axis = "gray20",
-            labels = FALSE
-          )
-          graphics::box(col = "gray20", lwd = 1)
-          if (as.logical(input$trend)) {
-            # calculate the linear trend
-            x <-
-              c(seq_along(visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]]))
-            model <-
-              stats::lm(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]] ~ x, na.action = stats::na.exclude)
-            graphics::lines(visualizeVariables()$date.time[input$sliderx[1]:input$sliderx[2]],
-                            stats::predict(model),
-                            col = "gray20",
-                            lwd = linesize)
-            conf <- stats::confint(model, "x", level = 0.95)
-            trend <- model$coeff["x"] * 12.
-            lconf <- conf[1] * 12.
-            uconf <- conf[2] * 12
-
-            mean.out <-
-              format(mean(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE),
-                     digits = 3,
-                     nsmall = 1)
-            trend.out <-
-              paste0(
-                "[",
-                format(lconf, digits = 2, nsmall = 2),
-                ",",
-                format(trend, digits = 2, nsmall = 2),
-                ",",
-                format(uconf, digits = 2, nsmall = 2),
-                "] "
-              )
-            xtext <- as.Date(visualizeVariables()$date.time[input$sliderx[1]])
-
-            pmin <-
-              min(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE)
-            pmax <-
-              max(visualizeVariables()$data[input$sliderx[1]:input$sliderx[2]], na.rm = TRUE)
-            drange <- pmax - pmin
-            graphics::text(
-              xtext,
-              pmax - 0.01 * drange,
-              paste("mean:", mean.out, visualizeVariables()$unit, sep = " "),
-              pos = 4,
-              cex = textsize
-            )
-            graphics::text(
-              xtext,
-              pmax - 0.08 * drange,
-              paste0("linear trend:", trend.out, visualizeVariables()$unit, "/yr"),
-              pos = 4,
-              cex = textsize
-            )
-          }
-          graphics::mtext(input$text2_1d)
-          on.exit(grDevices::dev.off())
-        }
-      } # end if analyze
-    })
-    png_path(outfile)
-
-    # Return a list containing the filename
-    list(
-      src = outfile,
-      contentType = 'image/png',
-      width = iwidth,
-      height = iheight,
-      alt = "This is alternate text"
-    )
-  })
+    ls <- getPlot_1d()
+    png_path(ls$src)
+    ls
+  },deleteFile = FALSE)
 
   # Creating a preview plot.
   output$previewSpatialCoveragePlot_vis <- renderPlot({
@@ -4546,32 +3827,138 @@ function(input, output, session) {
   # Observing changes in brushing
   observe({
     if (is.null(input$zoom_brush)) {
-      lon_bounds( input$slider1 )
-      lat_bounds( input$slider2 )
+      lon_bounds(input$slider1)
+      lat_bounds(input$slider2)
     } else {
       brush <- input$zoom_brush
       lon <- c(brush$xmin, brush$xmax)
       lat <- c(brush$ymin, brush$ymax)
-      lon_bounds( lon )
-      lat_bounds( lat )
+      lon_bounds(lon)
+      lat_bounds(lat)
     }
   })
 
-  # Download the created png plot.
-  output$downloadPlot <- downloadHandler(
+  # Download data for 1D-plot.
+  output$downloadFile <- downloadHandler(
     filename = function() {
+      return(paste0("data_", input$text1_1d, sessionName, ".csv"))
+    },
+    content = function(file) {
+      # TODO: NOT SURE IF THIS WILL WORK IN REMOTE HOST. PLEASE TRY ON SHADOW!!
+      removeModal()
+      sep <- switch(as.numeric(input$separator), ";", ",", "\t")
+      dataframe <- data.frame(visualizeVariables()$date.time, visualizeVariables()$data[,,])
+      names(dataframe) <- c("dateTime", "data")
+      utils::write.table(dataframe, file, row.names = FALSE, sep = sep)
+    },
+    contentType = "text/comma-separated-values"
+  )
+
+  output$downloadPlot <- downloadHandler(
+    #filename:
+    filename = function() {
+      ext <- switch(as.numeric(input$imageformat), ".png", ".kml", ".tif", ".jpg", ".pdf")
+      selected <- input$imageformat
       if (visualizeVariables()$plot_dim == 2) {
-        return(paste0("plot_", input$text1, sessionName, ".png"))
+        return(paste0("plot_", input$text1, sessionName, ext))
       } else {
-        return(filename = paste0("plot_", input$text1_1d, sessionName, ".png"))
+        return(paste0("plot_", input$text1_1d, sessionName, ext))
       }
     },
     content = function(file) {
       # TODO: NOT SURE IF THIS WILL WORK IN REMOTE HOST. PLEASE TRY ON SHADOW!!
+      withProgress(message = "downloading File", value = 0,
+                   {
+                     removeModal()
+                     for (i in 1:10) {
+                       incProgress(1/10)
+                       Sys.sleep(0.25)
+                     }
+                     if (input$imageformat == 1) {
+                       file.copy(png_path(), file)
+                     } else {
+                       fileExtension <- switch(as.numeric(input$imageformat), ".png", ".kml", ".tif", ".jpg", ".pdf")
 
-      file.copy(png_path(), file)
+                       if (input$plot_region) {
+                         res_plot <- cmsafvis::render_region_plot(infile = nc_path_visualize(),
+                                                                  fileExtension = fileExtension,
+                                                                  visualizeVariables = visualizeVariables(),
+                                                                  visualizeDataMax = visualizeDataMax(),
+                                                                  lon_bounds = lon_bounds(),
+                                                                  lat_bounds = lat_bounds(),
+                                                                  lon_loc_vec = lon_loc_vec(),
+                                                                  lat_loc_vec = lat_loc_vec(),
+                                                                  name_loc_vec = name_loc_vec(),
+                                                                  division = input$division,
+                                                                  selectedRegion = input$region,
+                                                                  region_data = region_data(),
+                                                                  timestep = input$timestep,
+                                                                  num_tick = input$num_tick,
+                                                                  num_rmin = input$num_rmin,
+                                                                  num_rmax = input$num_rmax,
+                                                                  location = input$location,
+                                                                  text1 = input$text1,
+                                                                  text2 = input$text2,
+                                                                  text3 = input$text3,
+                                                                  PAL = input$PAL,
+                                                                  palettes = palettes,
+                                                                  num_brk = input$num_brk,
+                                                                  reverse = input$reverse,
+                                                                  textsize = textsize,
+                                                                  bordercolor = bordercolor,
+                                                                  plot_grid = plot_grid,
+                                                                  grid_col = grid_col,
+                                                                  image_def = image_def,
+                                                                  ihsf = ihsf)
+                         in_plot <- res_plot$src
+                       } else {
+                         res_plot <- cmsafvis::render_plot(plot_rinstat = input$plot_rinstat,
+                                                           fileExtension = fileExtension,
+                                                           visualizeVariables = visualizeVariables(),
+                                                           visualizeDataTimestep = visualizeDataTimestep(),
+                                                           nc_path_visualize = nc_path_visualize(),
+                                                           visualizeDataMax = visualizeDataMax(),
+                                                           lon_bounds = lon_bounds(),
+                                                           lat_bounds = lat_bounds(),
+                                                           lon_loc_vec = lon_loc_vec(),
+                                                           lat_loc_vec = lat_loc_vec(),
+                                                           name_loc_vec = name_loc_vec(),
+                                                           timestep = input$timestep,
+                                                           num_tick = input$num_tick,
+                                                           num_rmin = input$num_rmin,
+                                                           num_rmax = input$num_rmax,
+                                                           num_brk = input$num_brk,
+                                                           co.data = co.data(),
+                                                           proj = input$proj,
+                                                           imagewidth = imagewidth(),
+                                                           imageheight = imageheight(),
+                                                           xort = input$xort,
+                                                           yort = input$yort,
+                                                           rort = input$rort,
+                                                           slider1 = input$slider1,
+                                                           slider2 = input$slider2,
+                                                           location = input$location,
+                                                           text1 = input$text1,
+                                                           text2 = input$text2,
+                                                           text3 = input$text3,
+                                                           int = input$int,
+                                                           textsize = textsize,
+                                                           bordercolor = bordercolor,
+                                                           linesize = linesize,
+                                                           na.color = na.color,
+                                                           PAL = input$PAL,
+                                                           palettes = palettes,
+                                                           reverse = input$reverse,
+                                                           plot_grid = plot_grid,
+                                                           grid_col = grid_col)
+                         in_plot <- res_plot$src
+                       }
+                       file.copy(in_plot,file)
+                     }
+                   })
     },
-    contentType = "image/png")
+    contentType = switch(as.numeric(input$imageformat), "image/png", "image/kml", "image/tif", "image/jpg", "image/pdf")
+  )
 
   # Statsics output
   observe({
@@ -4593,42 +3980,31 @@ function(input, output, session) {
     if (abs(visualizeDataMax()) >= 10) (dg <- 1)
     if (abs(visualizeDataMax()) >= 100) (dg <- 0)
 
-    da_mean   <- round(mean(dastat,na.rm = TRUE), digits = dg)
-    da_median <- round(stats::median(dastat,na.rm = TRUE), digits = dg)
-    da_sd     <- round(stats::sd(dastat,na.rm = TRUE), digits = dg)
-    da_max    <- round(max(dastat,na.rm = TRUE), digits = dg)
-    da_min    <- round(min(dastat,na.rm = TRUE), digits = dg)
+    da_mean   <- round(mean(dastat, na.rm = TRUE), digits = dg)
+    da_median <- round(stats::median(dastat, na.rm = TRUE), digits = dg)
+    da_sd     <- round(stats::sd(dastat, na.rm = TRUE), digits = dg)
+    da_max    <- round(max(dastat, na.rm = TRUE), digits = dg)
+    da_min    <- round(min(dastat, na.rm = TRUE), digits = dg)
 
     # some numbers
     output$statistics <- renderPrint({
-      cat(paste0("Mean:               ",da_mean),"\n")
-      cat(paste0("Median:             ",da_median),"\n")
-      cat(paste0("Standard deviation: ",da_sd),"\n")
-      cat(paste0("Maximum:            ",da_max),"\n")
-      cat(paste0("Minimum:            ",da_min),"\n")
-      cat(paste0("Unit:               ",visualizeVariables()$unit),"\n")
+      cat(paste0("Mean:               ", da_mean), "\n")
+      cat(paste0("Median:             ", da_median), "\n")
+      cat(paste0("Standard deviation: ", da_sd), "\n")
+      cat(paste0("Maximum:            ", da_max), "\n")
+      cat(paste0("Minimum:            ", da_min), "\n")
+      cat(paste0("Unit:               ", visualizeVariables()$unit), "\n")
     })
 
     # Missing values can be found in global.R
     # histogram
     output$myHist <- renderPlot({
-      dastat <- as.numeric(dastat)
-
-      # Provide that not all values are NA
-      min_max <- range(dastat)
-      req(min_max[1])
-      req(min_max[2])
-
-      graphics::hist(dastat, main = paste0("Histogram of ", input$text1),
-                     xlab = input$text3, col = grDevices::rgb(91, 127, 149, maxColorValue = 255))
-      graphics::rect(graphics::par("usr")[1],
-                     graphics::par("usr")[3],
-                     graphics::par("usr")[2],
-                     graphics::par("usr")[4],
-                     col = "light grey")
-      graphics::grid(NULL, NULL, lty = 3, col = grid_col, lwd = 1.5)
-      graphics::hist(dastat, col = grDevices::rgb(91, 127, 149, maxColorValue = 255), add = TRUE)
-      graphics::box(col = bordercolor, lwd = linesize)
+      cmsafvis::render_hist_plot(dastat = as.numeric(dastat),
+                                 shortDescription = input$text1,
+                                 xlab = input$text3,
+                                 grid_col = grid_col,
+                                 bordercolor = bordercolor,
+                                 linesize = linesize)
     })
   })
 
@@ -4639,54 +4015,15 @@ function(input, output, session) {
   }, {
     # Requirements
     req(instat_path())
-    if (input$plot_rinstat && file.exists( instat_path())) {
+    if (input$plot_rinstat && file.exists(instat_path())) {
       # grid_col, bordercolor, and linesize can be found in global.R
       output$myComp <- renderPlot({
-        lo <- as.numeric(co.data()$lon_station)
-        la <- as.numeric(co.data()$lat_station)
-        st <- co.data()$data_station
-        sa <- co.data()$data_sat
-        st <- st[order(la)]
-        sa <- sa[order(la)]
-        lo <- lo[order(la)]
-        la <- la[order(la)]
-        xlabs <- NULL
-        for (i in seq_along(st)) {
-          dummy <- paste0("[", round(lo[i], digits = 1), ";", round(la[i], digits = 1), "]")
-          xlabs <- append(xlabs, dummy)
-        }
-        rd <- rbind(st, sa)
-        rownames(rd) <- c("R-Instat data", "Your data")
-        graphics::par(mar = c(6, 5, 3, 2))
-        graphics::barplot(rd,
-                          beside = TRUE,
-                          main = paste0("Comparison of ", input$text1),
-                          ylab = input$text3,
-                          names.arg = xlabs,
-                          col = c(grDevices::rgb(0, 32, 91, maxColorValue = 255),
-                                  grDevices::rgb(242, 169, 0, maxColorValue = 255)),
-                          las = 2)
-        graphics::rect(graphics::par("usr")[1],
-                       graphics::par("usr")[3],
-                       graphics::par("usr")[2],
-                       graphics::par("usr")[4],
-                       col = "light grey")
-        graphics::grid(NULL,
-                       NULL,
-                       lty = 3,
-                       col = grid_col,
-                       lwd = 1.5)
-        graphics::barplot(rd,
-                          beside = TRUE,
-                          ylab = input$text3,
-                          names.arg = xlabs,
-                          col = c(
-                            grDevices::rgb(0, 32, 91, maxColorValue = 255),
-                            grDevices::rgb(242, 169, 0, maxColorValue = 255)),
-                          las = 2,
-                          add = TRUE,
-                          legend.text = c("Surface", "Satellite"))
-        graphics::box(col = bordercolor, lwd = linesize)
+        cmsafvis::render_instat_plot(co.data = co.data(),
+                                     shortDescription = input$text1,
+                                     ylab = input$text3,
+                                     grid_col = grid_col,
+                                     bordercolor = bordercolor,
+                                     linesize = linesize)
       })
     }
   })
@@ -4694,46 +4031,46 @@ function(input, output, session) {
   # File summaries
   output$summary1 <- renderPrint({
     req(nc_path_visualize())
-    cmsaf::ncinfo(nc_path_visualize())
+    cmsafops::ncinfo(nc_path_visualize())
   })
 
   output$summary2 <- renderPrint({
     req(nc_path_visualize())
-    cmsaf::ncinfo(nc_path_visualize(), "m")
+    cmsafops::ncinfo(nc_path_visualize(), "m")
   })
 
   # About part
   output$about <- renderPrint({
-    cat("The CMSAF Visualizer is part of the CM SAF R Toolbox.","\n")
-    cat("This tool helps you to visualize 1D-timeseries and 2D-maps.","\n")
+    cat("The CMSAF Visualizer is part of the CM SAF R Toolbox.", "\n")
+    cat("This tool helps you to visualize 1D-timeseries and 2D-maps.", "\n")
     cat("\n")
-    cat("This version ('Don`t Panic') was tested with the cmsaf","\n")
-    cat("R-package in version 2.0.1.","\n")
+    cat("This version ('Share and Enjoy') was tested with the cmsaf", "\n")
+    cat("R-package in version 3.0.0.", "\n")
     cat("\n")
-    cat("Suggestions for improvements and praise for the developers","\n")
-    cat("can be send to contact.cmsaf@dwd.de.","\n")
+    cat("Suggestions for improvements and praise for the developers", "\n")
+    cat("can be send to contact.cmsaf@dwd.de.", "\n")
     cat("\n")
-    cat("                              - Steffen Kothe - 2019-08-08 -","\n")
+    cat("                              - Steffen Kothe - 2020-07-24 -", "\n")
     cat("\n")
     cat("\n")
   })
 
   # Tipps
   output$tipps <- renderPrint({
-    cat("When you save a figure, please add the file extension .png !","\n")
+    cat("You can easily plot station data, which were exported by R-Instat.", "\n")
     cat("\n")
-    cat("If saving an image fails, try right-click plus 'save image as'.","\n")
+    cat("If saving an image fails, try right-click plus 'save image as'.", "\n")
     cat("\n")
-    cat("The orthographic projection includes some interpolation,","\n")
-    cat("which can have an impact on local pixel values!","\n")
+    cat("The orthographic projection includes some interpolation,", "\n")
+    cat("which can have an impact on local pixel values!", "\n")
     cat("\n")
-    cat("If you swim with a friend, your chances of getting eaten","\n")
-    cat("by a shark will drop by 50%.","\n")
+    cat("If you swim with a friend, your chances of getting eaten", "\n")
+    cat("by a shark will drop by 50%.", "\n")
     cat("\n")
   })
 
   output$link <- renderUI({
-    url <- a("http://www.cmsaf.eu/tools", href = "http://www.cmsaf.eu/tools")
+    url <- a("http://www.cmsaf.eu/R_toolbox", href = "http://www.cmsaf.eu/R_toolbox")
     tagList("URL link:", url)
   })
 
@@ -4756,6 +4093,85 @@ function(input, output, session) {
       if (length(list.files(userDir, recursive = TRUE, include.dirs = TRUE)) == 0) {
         unlink(userDir, recursive = TRUE)
       }
+    }
+  })
+
+
+  downloadModal1d <- function(failed = FALSE) {
+    modalDialog(column(6,
+                       radioButtons("separator",
+                                    label = "Choose separator",
+                                    choices = list("Semicolon" = 1,
+                                                   "Comma" = 2,
+                                                   "Tab" = 3),
+                                    selected = 1),
+                       downloadButton("downloadFile", "Download Data")
+    ),
+    column(6,
+           selectInput("imageformat",
+                       label = "File format",
+                       choices = list("PNG" = 1,
+                                      "jpeg" = 4,
+                                      "pdf" = 5
+                       ),
+                       selected = 1),
+           downloadButton("downloadPlot", "Download Image")
+    ),
+    footer = tagList(
+      modalButton("Cancel")
+    )
+
+    )
+  }
+  downloadModal2d <- function(failed = FALSE) {
+    modalDialog(
+      selectInput("imageformat",
+                  label = "File format",
+                  if (input$proj == "ortho") {
+                    choices <- list("PNG" = 1,
+                                   "jpeg" = 4,
+                                   "pdf" = 5
+                    )
+                  } else {
+                    choices <- list("PNG" = 1,
+                                   "KML" = 2,
+                                   "GeoTiff" = 3,
+                                   "jpeg" = 4,
+                                   "pdf" = 5
+                    )
+                  },
+                  selected = 1),
+      downloadButton("downloadPlot", "download Image"),
+      footer = tagList(
+        modalButton("Cancel")
+      )
+
+    )
+  }
+
+  # Downloader for monitor_climate
+  output$download_monitor_climate <- renderUI({
+    downloadButton(
+      outputId = "download_monitor_climate_output",
+      label = basename(image_path_visualize()),
+      style = "width:100%;")
+  })
+
+  output$download_monitor_climate_output <- downloadHandler(
+    filename = function() {
+      paste0(basename(image_path_visualize()))
+    },
+    content = function(con) {
+      file.copy(image_path_visualize(), con)
+    }
+  )
+
+  # Show modal when button is clicked.
+  observeEvent(input$showModal, {
+    if (visualizeVariables()$plot_dim == 1) {
+      showModal(downloadModal1d())
+    } else {
+      showModal(downloadModal2d())
     }
   })
 }

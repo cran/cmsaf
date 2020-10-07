@@ -164,7 +164,7 @@ pre {
 #proceed {
   padding: 50px !important;
   margin-left: calc(50% - 77px);
-  margin-top: 40vh; 
+  margin-top: 40vh;
 }
 
 /* SPINNER */
@@ -178,6 +178,22 @@ pre {
 
 #backToSetup {
   margin-bottom: 2vh !important;
+}
+
+#multi_warning {
+  color: red !important;
+  margin-top: 7px !important;
+  margin-bottom: 7px !important;
+}
+
+#multiDayNonAccuGraphic {
+  color: red !important;
+  margin-bottom: 15px !important;
+}
+
+#attach_warning {
+  color: red !important;
+  margin-bottom: 15px !important;
 }
 
 .spinner {
@@ -204,7 +220,7 @@ pre {
   position: absolute;
   top: 40vh;
   left: calc(50% - 25px);
-  
+
   -webkit-animation: sk-bounce 2.0s infinite ease-in-out;
   animation: sk-bounce 2.0s infinite ease-in-out;
 }
@@ -220,10 +236,10 @@ pre {
 }
 
 @keyframes sk-bounce {
-  0%, 100% { 
+  0%, 100% {
     transform: scale(0.0);
     -webkit-transform: scale(0.0);
-  } 50% { 
+  } 50% {
     transform: scale(1.0);
     -webkit-transform: scale(1.0);
   }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/run_toolbox.R
 \name{run_toolbox}
 \alias{run_toolbox}
-\title{Run the CMSAF toolbox.}
+\title{Run the CMSAF R Toolbox.}
 \usage{
 run_toolbox(...)
 }
@@ -10,7 +10,8 @@ run_toolbox(...)
 \item{...}{Arguments to be passed to \code{\link[shiny]{runApp}}.}
 }
 \description{
-Run the interactive shiny-based toolbox based on the cmsaf package.
+Run the interactive shiny-based CM SAF R Toolbox. It uses functions from
+\link[cmsafops:cmsafops]{cmsafops} and \link[cmsafvis:cmsafvis]{cmsafvis}.
 }
 \examples{
 \dontrun{run_toolbox(launch.browser = TRUE)}
