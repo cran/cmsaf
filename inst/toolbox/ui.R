@@ -3,13 +3,13 @@
 # You should not use this R-script on its own!
 #
 # Have fun with the CM SAF R TOOLBOX!
-#                                              (Steffen Kothe / CM SAF 2020-07-24)
+#                                              (Steffen Kothe / CM SAF 2021-02-11)
 #__________________________________________________________________________________
 
 descriptionString <-
   "
 
-The CM SAF R TOOLBOX 3.0.0 -- 'Share and Enjoy'
+The CM SAF R TOOLBOX 3.1.0 -- 'Beware of the Leopard'
 
 The intention of the CM SAF R Toolbox is to help you using
 CM SAF NetCDF formatted data
@@ -19,13 +19,13 @@ This includes:
   2. Analysis of prepared CM SAF data.
   3. Visualization of the results.
 
-To begin, choose a .tar file in the prepare section or jump
+To begin, choose a .tar file or a .nc file in the prepare section or jump
 right in and analyze or visualize a .nc file.
 
 Suggestions for improvements and praise for the developers
 can be sent to contact.cmsaf@dwd.de.
 
-- Steffen Kothe - 2020-07-24 -"
+- Steffen Kothe - 2020-02-11 -"
 
 # Variable can be found in global.R
 if (isRunningLocally) {
@@ -108,18 +108,39 @@ fluidPage(
                            tags$div(id = "panel_prepareGo",
                                     uiOutput("prepareString"),
                                     br(),
-                                    shinyjs::hidden(actionButton("tarFileLocal",
-                                                                 label = "Choose a file...")),
-                                    shinyjs::hidden(shinyFiles::shinyFilesButton(
-                                                              id = "tarFileRemote",
-                                                              label = "Choose a file...",
-                                                              multiple = FALSE,
-                                                              title = "Please select a .tar-file.")))),
+                                    tags$div(id = "ncFileWrapper",
+                                            shinyjs::hidden(actionButton("tarFileLocal",
+                                                                         label = "Choose a .tar-file...")),
+                                            shinyjs::hidden(shinyFiles::shinyFilesButton(
+                                                                                         id = "tarFileRemote",
+                                                                                         label = "Choose a .tar-file...",
+                                                                                         multiple = FALSE,
+                                                                                         title = "Please select a .tar-file.")),
+                                            shinyjs::hidden(span(id = "or_prepare", "or")),
+                                            shinyjs::hidden(actionButton("ncFileLocal",
+                                                                         label = "Choose .nc-files...")),
+                                            shinyjs::hidden(shinyFiles::shinyFilesButton(
+                                                                                         id = "ncFileRemote",
+                                                                                         label = "Choose .nc-files...",
+                                                                                         multiple = FALSE,
+                                                                                         title = "Please select .nc-files.")))
+                                    )),
+                                   
                          shinyjs::hidden(
                            tags$div(id = "panel_prepareInput1",
                                     uiOutput("dateRange_ui"),
                                     shinyjs::disabled(actionButton("untarAndUnzip",
-                                                                   "Untar and unzip files.")))),
+                                                                   "Untar and unzip files.")),
+                                    )),
+                         
+                         # date range .nc-files selection
+                         shinyjs::hidden(
+                           tags$div(id = "panel_prepareInput1Nc",
+                                    uiOutput("variable_ui_nc"),
+                                    uiOutput("dateRange_ui_nc"),
+                                    shinyjs::disabled(actionButton("applyDateRange",
+                                                                   "Apply")),
+                           )),
                          # Panel after untaring and unzipping.
                          # First a few spinner classes.
                          shinyjs::hidden(tags$div(id = "spinner_prepare1",
@@ -137,6 +158,11 @@ fluidPage(
                                                   tags$div(class = "spinner-title", h4("Creating your output file...")),
                                                   tags$div(class = "double-bounce1"),
                                                   tags$div(class = "double-bounce2"))),
+                         shinyjs::hidden(tags$div(id = "spinner_prepare4",
+                                                  class = "spinner",
+                                                  tags$div(class = "spinner-title", h4("Applying...")),
+                                                  tags$div(class = "double-bounce1"),
+                                                  tags$div(class = "double-bounce2"))),
                          shinyjs::hidden(selectInput(inputId = "aux_select",
                                                      label = "File does not contain lon/lat information. Please provide an auxiliary file.",
                                                      choices = c("Choose an option" = "",
@@ -152,13 +178,28 @@ fluidPage(
                                                     uiOutput("lonRange_ui"),
                                                     uiOutput("latRange_ui"),
                                                     shinyjs::hidden(uiOutput("level_ui")),
+                                                    checkboxInput("checkboxInput_aggregate", 
+                                                                  "Do you want to aggregate the data before analysis?",
+                                                                  value = FALSE),
+                                                    shinyjs::hidden(selectInput("operatorGroupsPrepare",
+                                                                                label = "Select an operator for aggregation ",
+                                                                                choices = operatorGroupsPrepare,
+                                                                                width = "300px")),
+                                                    shinyjs::hidden(tags$div(id = "timeRange_prepare",
+                                                                             numericInput("timeRange_nts_prepare",
+                                                                                          "Please enter a number of time steps",
+                                                                                          value = 1,
+                                                                                          min = 0,
+                                                                                          max = 1000000,
+                                                                                          step = 1,
+                                                                                          width = "300px"))),
                                                     selectInput("outputFormat",
                                                                 "Select output format",
                                                                 choices = c("NetCDF4" = 4, "NetCDF3" = 3),
                                                                 selected = "NetCDF4"),
-                                                    checkboxInput("deleteExtracted",
+                                                    shinyjs::hidden(checkboxInput("deleteExtracted",
                                                                   "Delete the extracted files after the output has been created? (Recommended)",
-                                                                  value = TRUE),
+                                                                  value = TRUE)),
                                                     actionButton("createOutput",
                                                                  "Create output file!")),
                                              column(7,
@@ -174,7 +215,7 @@ fluidPage(
                                                                           label = "Analyze this file!")),
                                              shinyjs::hidden(h5(id = "or_analyze", "or")),
                                              shinyjs::hidden(actionButton("ncFileLocal_analyze",
-                                                                          label = "Choose a file...")),
+                                                                          label = "Choose a .nc-file...")),
                                              shinyjs::hidden(shinyFiles::shinyFilesButton(
                                                               id = "ncFileRemote_analyze",
                                                               label = "Choose a file...",
@@ -192,9 +233,26 @@ fluidPage(
                                                          width = "320px"),
                                              uiOutput("operator"),
                                              # Operator options
+                                             # shinyjs::hidden(selectInput("monitorClimateAnalyzeMethod",
+                                             #                             label = "Select an analyze method ",
+                                             #                             choices = c("accumulate", "mean"),
+                                             #                             width = "320px")),
+                                             shinyjs::hidden(checkboxInput("monitorClimateAnalyzeMethod",
+                                                                           "Do you want to accumulate the infile over time?",
+                                                                           value = TRUE)),
+                                             shinyjs::hidden(numericInput("analyzeTimeSize",
+                                                                       label = "Selectable time range",
+                                                                       min = 1,
+                                                                       max = 12,
+                                                                       value = 1)),
+                                             
                                              shinyjs::hidden(checkboxInput("accumulateInfile",
                                                                            "Do you want to accumulate the infile over time?",
                                                                            value = TRUE)),
+                                             # shinyjs::hidden(checkboxInput("meanInfile",
+                                             #                               "Do you want to mean the infile over time?",
+                                             #                               value = FALSE)),
+                                             
                                              shinyjs::hidden(checkboxInput("attachToExisting",
                                                                            "Do you want to attach the data to that of an already existing file?"
                                                                            )),
@@ -230,6 +288,37 @@ fluidPage(
                                                                           max = 1,
                                                                           step = 0.05,
                                                                           width = "320px")),
+                                             shinyjs::hidden(tags$div(id = "gridbox",
+                                                                      numericInput("gridbox_lat",
+                                                                                   "Enter latitude index (integer)",
+                                                                                   value = 1,
+                                                                                   min = 0,
+                                                                                   max = 1000000,
+                                                                                   step = 1,
+                                                                                   width = "320px"),
+                                                                      numericInput("gridbox_lon",
+                                                                                   "Enter longitude index (integer)",
+                                                                                   value = 1,
+                                                                                   min = 0,
+                                                                                   max = 1000000,
+                                                                                   step = 1,
+                                                                                   width = "320px"))),
+                                             shinyjs::hidden(tags$div(id = "running",
+                                                                      numericInput("running_nts",
+                                                                                   "Please enter a number of time steps",
+                                                                                   value = 1,
+                                                                                   min = 0,
+                                                                                   max = 1000000,
+                                                                                   step = 1,
+                                                                                   width = "320px"))),
+                                             shinyjs::hidden(tags$div(id = "timeRange",
+                                                                      numericInput("timeRange_nts",
+                                                                                   "Please enter a number of time steps",
+                                                                                   value = 1,
+                                                                                   min = 0,
+                                                                                   max = 1000000,
+                                                                                   step = 1,
+                                                                                   width = "320px"))),
                                              shinyjs::hidden(checkboxGroupInput("months",
                                                                                 "Please select months",
                                                                                 c("January", "February", "March", "April", "May", "June",
@@ -251,9 +340,10 @@ fluidPage(
                                                                       verbatimTextOutput("secondFile"))),
                                              shinyjs::hidden(selectInput("plot_format",
                                                                         "Select plot format",
-                                                                        choices = c("graphic", "animation"))),
-                                             shinyjs::hidden(tags$div(id = "multiDayNonAccuGraphic",
-                                                                      "Creating a multi day graphic of non accumulated data is not possible. Please choose to accumulate the infile, or plot format 'animation', or select a single day in the date range")),
+                                                                        choices = c("graphic", "animation"),
+                                                                        width = "320px")),
+                                             # shinyjs::hidden(tags$div(id = "multiDayNonAccuGraphic",
+                                             #                          "Creating a multi day graphic of non accumulated/averaged data is not possible. Please choose to accumulate/mean the infile, or plot format 'animation', or select a single day in the date range")),
                                              conditionalPanel(condition = "input.plot_format == 'animation'",
                                                               numericInput("animation_pace",
                                                                            "Select animation pace",
@@ -261,6 +351,12 @@ fluidPage(
                                                                            min = 0.01,
                                                                            max = 100000,
                                                                            step = 0.1)),
+                                             shinyjs::hidden(tags$div(id = "file_selection",
+                                                                      actionButton("file_selection_button",
+                                                                          label = "Choose a second file..."))),
+                                             shinyjs::hidden(uiOutput("ncFile_analyze_second_file")),
+                                             shinyjs::hidden(uiOutput("multi_warning_adjust_two_files")),
+                                             shinyjs::hidden(uiOutput("date_range_compare_data")),
                                              selectInput("format",
                                                          "Select output format",
                                                          choices = c("NetCDF4" = 4, "NetCDF3" = 3),
@@ -323,12 +419,20 @@ fluidPage(
                                                     tags$div(class = "double-bounce2")))))))),
 
   #### VISUALIZE PAGE ####
+  shinyjs::hidden(tags$div(id = "spinner_visualize_compare_data",
+                           class = "spinner",
+                           tags$div(class = "spinner-title", h4("Preparing your plot...")),
+                           tags$div(class = "double-bounce1"),
+                           tags$div(class = "double-bounce2"))),
+  
   shinyjs::hidden(tags$div(
     id = "visualizePage",
 
     sidebarLayout(
       sidebarPanel(img(src = "R_Toolbox_Logo.png", width = "100%;", style = "padding: 10px;"),
                    h3("Visualizer Options:"),
+                   shinyjs::hidden(uiOutput("dropdown_compare_data")),
+                   shinyjs::hidden(uiOutput("dropdown_station_number")),
                    tags$div(id = "sidebar_2d_plot",
                             uiOutput("timestep_visualize"),
                             conditionalPanel(condition = "input.proj == 'rect'",
@@ -392,12 +496,12 @@ fluidPage(
                                                             choices = list(),
                                                             options = list(create = TRUE,
                                                                            render = I(renderString))),
-                                             checkboxInput("reverse", "Reverse Colors", value = FALSE, width = NULL),
+                                             checkboxInput("reverse", "Invert Colors", value = FALSE, width = NULL),
                             conditionalPanel(condition = "input.proj == 'rect' || input.plot_region",
                                              fluidRow(column(6,
-                                                             uiOutput("num_rmin")),
+                                                             shinyjs::hidden(uiOutput("num_rmin"))),
                                                       column(6,
-                                                             uiOutput("num_rmax")))),
+                                                             shinyjs::hidden(uiOutput("num_rmax"))))),
                             conditionalPanel(condition = "!input.plot_region",
                                              checkboxInput("int", "Plot Country Borders"),
                                              checkboxInput("plot_rinstat", "Plot R-Instat"),
@@ -432,16 +536,19 @@ fluidPage(
                                                                                        tags$label(" "),
                                                                                        actionButton("add_loc", label = "Add now", width = "100%")))))),
                             conditionalPanel(condition = "!input.plot_region",
-                                             selectInput("proj",
+                                             shinyjs::hidden(selectInput("proj",
                                                          label = "Projection",
-                                                         choices = c(Rectangular = "rect", Orthographic = "ortho"))),
+                                                         choices = c(Rectangular = "rect", Orthographic = "ortho")))),
                             uiOutput("title_text"),
                             uiOutput("subtitle_text"),
+                            shinyjs::hidden(uiOutput("title_text2")),
+                            shinyjs::hidden(uiOutput("subtitle_text2")),
                             uiOutput("scale_caption")),
                    # FOR NOW NOT ALLOWING CHANGES TO WIDTH AND HEIGHT IN APP. (DO IT IN GLOBAL.R)
                    # uiOutput("width_height"),
 
                    tags$div(id = "sidebar_1d_plot",
+                            shinyjs::hidden(uiOutput("date_dropdown_visualize")),
                             uiOutput("x_visualize"),
                             uiOutput("y_visualize"),
                             colourpicker::colourInput("integer",
@@ -474,7 +581,9 @@ fluidPage(
                                                          "YYYY-MM-DD HH:MM" = 4),
                                           selected = 2),
                               uiOutput("title_text_1d"),
-                              uiOutput("subtitle_text_1d"))),
+                              uiOutput("subtitle_text_1d"),
+                              uiOutput("x_axis_text_1d"),
+                              uiOutput("y_axis_text_1d"))),
 
                    # FOR NOW NOT ALLOWING CHANGES TO WIDTH AND HEIGHT IN APP. (DO IT IN GLOBAL.R)
                    # uiOutput("width_height"),
@@ -522,6 +631,9 @@ fluidPage(
                                                      imageOutput("myHist")),
                                               column(6,
                                                      imageOutput("myComp")))),
+                            tabPanel("Metrics",
+                                     h4("Metrics Compare Data"),
+                                     verbatimTextOutput("metrics")),
                             tabPanel("File Summary",
                                      fluidRow(column(12,
                                                      h4("Short File Info"),
@@ -529,6 +641,12 @@ fluidPage(
                                               column(12,
                                                      h4("Detailed File Info"),
                                                      verbatimTextOutput("summary2")))),
+                            tabPanel("Parameters",
+                                     h4("Some parameters"),
+                                     verbatimTextOutput("mc_parameters"),
+                                     #h4("Ranking"),
+                                     verbatimTextOutput("mc_ranking"),
+                            ),
                             tabPanel("About",
                                      fluidRow(column(8,
                                                      h4("The CM SAF Visualizer"),

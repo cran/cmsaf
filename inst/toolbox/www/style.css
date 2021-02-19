@@ -72,6 +72,12 @@ pre {
   padding: 10px 15px;
 }
 
+/* Prepare File Wrapping */
+#or_prepare {
+  margin-left: 15px;
+  margin-right: 15px;
+}
+
 /* Analyze File Wrapping */
 #useOutputFile_analyze, #useOutputFile_visualize {
   display: inline-block;

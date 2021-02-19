@@ -1,8 +1,19 @@
 # Release notes for cmsaf
 
-## 1.0.0
+## 3.1.0
 
-- Extract operators from [cmsaf package](https://cran.r-project.org/package=cmsaf). This one contains only the operators.
+- Extend functionalities of Climate Analysis
+- Add new operators (for details see [cmsafops package](https://cran.r-project.org/package=cmsafops))
+- Add option to use NetCDF files as input in Prepare step
+- Add functionalities to compare data
+- Update required package dependencies
+- Bug fixes
+
+## 3.0.0
+
+- Add new functionalities for Climate Analysis
+- Add option to export data in KML, GeoTiff or CSV
+- Add option to export figures as JPEG or PDF
 - Update required package dependencies
 - Add new operator timcumsum
 - For older versions of the package see [cmsaf package](https://cran.r-project.org/package=cmsaf).

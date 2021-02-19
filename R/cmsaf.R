@@ -23,7 +23,7 @@
 #'  Kothe, S.; Hollmann, R.; Pfeifroth, U.; Träger-Chatterjee, C.; Trentmann, J.
 #'  The CM SAF R Toolbox—A Tool for the Easy Usage of Satellite-Based Climate
 #'  Data in NetCDF Format. ISPRS Int. J. Geo-Inf. 2019, 8, 109.
-#'  \url{https://doi.org/10.3390/ijgi8030109}
+#'  \doi{10.3390/ijgi8030109}
 #'
 #'@keywords datagen manip package spatial ts univar
 NULL
