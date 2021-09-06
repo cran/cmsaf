@@ -3,13 +3,13 @@
 # You should not use this R-script on its own!
 #
 # Have fun with the CM SAF R TOOLBOX!
-#                                              (Steffen Kothe / CM SAF 2021-02-11)
+#                                              (Steffen Kothe / CM SAF 2021-08-23)
 #__________________________________________________________________________________
 
 descriptionString <-
   "
 
-The CM SAF R TOOLBOX 3.1.0 -- 'Beware of the Leopard'
+The CM SAF R TOOLBOX 3.2.0 -- 'This must be Thursday'
 
 The intention of the CM SAF R Toolbox is to help you using
 CM SAF NetCDF formatted data
@@ -25,7 +25,7 @@ right in and analyze or visualize a .nc file.
 Suggestions for improvements and praise for the developers
 can be sent to contact.cmsaf@dwd.de.
 
-- Steffen Kothe - 2020-02-11 -"
+- Steffen Kothe - 2021-08-26 -"
 
 # Variable can be found in global.R
 if (isRunningLocally) {
@@ -263,6 +263,10 @@ fluidPage(
                                                                           "Enter a number",
                                                                           value = 1,
                                                                           width = "320px")),
+											 shinyjs::hidden(numericInput("threshold",
+                                                                          "Enter a number",
+                                                                          value = 0,
+                                                                          width = "320px")),
                                              shinyjs::hidden(uiOutput("select_country")),
                                              shinyjs::hidden(uiOutput("region_to_select")),
                                              shinyjs::hidden(tags$div(id = "point",
@@ -379,7 +383,7 @@ fluidPage(
                                                           class = "btn btn-success btn-lg btn-block",
                                                           style = "font-size: 30px"),
                                              h5("If you would like to have more functions included contact:"),
-                                             h5("cmsaf.training@dwd.de"),
+                                             h5("training.cmsaf@dwd.de"),
                                              br()
                                       ),
                                       column(width = 7,
@@ -453,7 +457,8 @@ fluidPage(
                                              conditionalPanel(condition = "!input.plot_region",
                                                               checkboxInput("show_zoom", "Show Zoom"),
                                                               uiOutput("lon_visualize"),
-                                                              uiOutput("lat_visualize"))),
+                                                              uiOutput("lat_visualize"),
+                                                              uiOutput("ihsf_visualize"))),
                             conditionalPanel(condition = "input.proj == 'ortho'",
                                              fluidRow(column(4,
                                                              numericInput("yort",

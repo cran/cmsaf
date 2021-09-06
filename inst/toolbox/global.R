@@ -3,7 +3,7 @@
 # You should not use this R-script on its own!
 #
 # Have fun with the CM SAF R TOOLBOX!
-#                                              (Steffen Kothe / CM SAF 2021-02-11)
+#                                              (Steffen Kothe / CM SAF 2021-08-10)
 #__________________________________________________________________________________
 
 # Use home directory for storing config file (e.g. C:\Users\<user>\Documents
@@ -61,7 +61,9 @@ operators[["Mathematical operators"]] <- c("Compute absolute values" = "cmsaf.ab
                                            "Divide by days per month" = "divdpm",
                                            "Multiply by days per month" = "muldpm",
                                            "Add values from another file" = "cmsaf.add",
-                                           "Subtract values from another file" = "cmsaf.sub")
+                                           "Subtract values from another file" = "cmsaf.sub",
+                                           "Multiply values from another file" = "cmsaf.mul",
+                                           "Divide by values from another file" = "cmsaf.div")
 
 operators[["Hourly statistics"]] <- c("Hourly mean" = "hourmean",
                                       "Hourly sum" = "hoursum")
@@ -98,7 +100,10 @@ operators[["Monthly statistics"]] <- c("Monthly anomalies" = "mon.anomaly",
                                        "Multi-year monthly means" = "ymonmean",
                                        "Multi-year monthly minima" = "ymonmin",
                                        "Multi-year monthly standard deviations" = "ymonsd",
-                                       "Multi-year monthly sums" = "ymonsum")
+                                       "Multi-year monthly sums" = "ymonsum",
+									   "Monthly number of timesteps above threshold" = "mon_num_above",
+									   "Monthly number of timesteps below threshold" = "mon_num_below",
+									   "Monthly number of timesteps equal threshold" = "mon_num_equal")
 
 operators[["Seasonal statistics"]] <- c("Seasonal anomalies" = "seas.anomaly",
                                         "Seasonal means" = "seasmean",
@@ -142,17 +147,21 @@ operators[["Grid boxes statistics"]] <- c("Gridbox maxima" = "gridboxmax",
                                           "Gridbox sums" = "gridboxsum",
                                           "Gridbox variances" = "gridboxvar")
 
-operators[["Temporal operators"]] <- c("All-time maxima" = "timmax",
-                                       "All-time means" = "timmean",
+operators[["Temporal operators"]] <- c("All-time average" = "timavg",
+									   "All-time maxima" = "timmax",
+                                       "All-time mean" = "timmean",
                                        "All-time minima" = "timmin",
-                                       "All-time percentiles" = "timpctl",
-                                       "All-time standard deviations" = "timsd",
-                                       "All-time sums" = "timsum",
+                                       "All-time percentile" = "timpctl",
+                                       "All-time standard deviation" = "timsd",
+                                       "All-time sum" = "timsum",
                                        "Detrend" = "cmsaf.detrend",
-                                       "Linear trends" = "trend",
+                                       "Linear trend" = "trend",
                                        "Mann-Kendall Test" = "cmsaf.mk.test",
                                        "Regression" = "cmsaf.regres",
-                                       "Multiple linear regression" = "trend_advanced"
+                                       "Multiple linear regression" = "trend_advanced",
+									   "Number of timesteps above threshold" = "num_above",
+									   "Number of timesteps below threshold" = "num_below",
+									   "Number of timesteps equal threshold" = "num_equal"								                     
                                        )
 
 operators[["Time range statistics"]] <- c("Time selection mean" = "timselmean",
@@ -220,13 +229,20 @@ operatorOptions <- c("constant",
                      "file_selection",
                      "running",
                      "timeRange",
-                     "compare_data")
+                     "compare_data",
+                     "threshold")
 
 operatorOptionsDict <- c()
 operatorOptionsDict[["constant"]] <- c("cmsaf.addc",
                                        "cmsaf.divc",
                                        "cmsaf.mulc",
                                        "cmsaf.subc")
+operatorOptionsDict[["threshold"]] <- c("num_above",
+                                        "num_below",
+                                        "num_equal",
+										                "mon_num_above",
+										                "mon_num_below",
+										                "mon_num_equal")
 operatorOptionsDict[["region"]] <- c("sellonlatbox",
                                      "absolute_map",
                                      "anomaly_map",
@@ -276,7 +292,9 @@ operatorOptionsDict[["monitor_climate"]] <- c("absolute_map",
                                               "time_series_plot",
                                               "trend_plot")
 operatorOptionsDict[["file_select"]] <- c("cmsaf.add", 
-                                          "cmsaf.sub")
+                                          "cmsaf.sub",
+                                          "cmsaf.mul",
+                                          "cmsaf.div")
 operatorOptionsDict[["file_selection"]] <- c("fldcor", 
                                              "fldcovar", 
                                              "timcor", 
@@ -300,7 +318,7 @@ bordercolor <- "gray20"
 # imageheight <- -1
 na.color    <- "gray80"
 image_def <- 800         # default image size
-ihsf      <- 0.1         # default image heigth scale factor
+#ihsf      <- 0.1        # default image heigth scale factor (new slider for ihsf in visualizer)
 grid_col  <- "cornsilk2" # default color of grid lines
 plot_grid <- TRUE        # plot grid lines (TRUE = yes, FALSE = no)
 

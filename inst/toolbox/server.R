@@ -3,7 +3,7 @@
 # You should not use this R-script on its own!
 #
 # Have fun with the CM SAF R TOOLBOX!
-#                                              (Steffen Kothe / CM SAF 2021-02-11)
+#                                              (Steffen Kothe / CM SAF 2021-08-23)
 #__________________________________________________________________________________
 
 # Function to compute first of month
@@ -320,6 +320,7 @@ function(input, output, session) {
   # Reactive values for coordinate bounds in visualize
   lon_bounds <- reactiveVal()
   lat_bounds <- reactiveVal()
+  ihsf       <- reactiveVal()
 
   # Longitute, latitute location vectors (of own locations added in options)
   lon_loc_vec  <- reactiveVal()
@@ -1673,7 +1674,7 @@ function(input, output, session) {
       })
     }
     
-    # Rendering lat, lon range.
+    # Rendering lon range.
     output$lonRange_ui <- renderUI({
       sliderInput(inputId = "lonRange",
                   label = "Please select a longitude range.",
@@ -1684,7 +1685,7 @@ function(input, output, session) {
       )
     })
 
-    # Rendering lat, lat range.
+    # Rendering lat range.
     output$latRange_ui <- renderUI({
       sliderInput(inputId = "latRange",
                   label = "Please select a latitude range.",
@@ -2435,21 +2436,55 @@ function(input, output, session) {
       lat <- file_data$dimension_data$y
       
       output$region_to_select <- renderUI({
+        # tags$div(id = "region",
+        #          sliderInput("lonRegionSlider",
+        #                      label = "Select longitude",
+        #                      min = ceiling(min(lon, na.rm = T)*100)/100,
+        #                      max = floor(max(lon, na.rm = T)*100)/100,
+        #                      value = c(ceiling(min(lon, na.rm = T)*100)/100,
+        #                                floor(max(lon, na.rm = T)*100)/100),
+        #                      width = "320px"),
+        #          sliderInput("latRegionSlider",
+        #                      label = "Select latitude",
+        #                      min = ceiling(min(lat, na.rm = T)*100)/100,
+        #                      max = floor(max(lat, na.rm = T)*100)/100,
+        #                      value = c(ceiling(min(lat, na.rm = T)*100)/100,
+        #                                floor(max(lat, na.rm = T)*100)/100),
+        #                      width = "320px"))
         tags$div(id = "region",
-                 sliderInput("lonRegionSlider",
-                             label = "Select longitude",
-                             min = ceiling(min(lon, na.rm = T)*100)/100,
-                             max = floor(max(lon, na.rm = T)*100)/100,
-                             value = c(ceiling(min(lon, na.rm = T)*100)/100,
-                                       floor(max(lon, na.rm = T)*100)/100),
-                             width = "320px"),
-                 sliderInput("latRegionSlider",
-                             label = "Select latitude",
-                             min = ceiling(min(lat, na.rm = T)*100)/100,
-                             max = floor(max(lat, na.rm = T)*100)/100,
-                             value = c(ceiling(min(lat, na.rm = T)*100)/100,
-                                       floor(max(lat, na.rm = T)*100)/100),
-                             width = "320px"))
+          fluidRow(
+            column(width = 5,
+                   numericInput("lonRegionMin",
+                               label = "Longitude min",
+                               min = ceiling(min(lon, na.rm = T)*100)/100,
+                               max = floor(max(lon, na.rm = T)*100)/100,
+                               value = ceiling(min(lon, na.rm = T)*100)/100)
+                               ),
+            column(width = 5,
+                   numericInput("lonRegionMax",
+                                label = "Longitude max",
+                                min = ceiling(min(lon, na.rm = T)*100)/100,
+                                max = floor(max(lon, na.rm = T)*100)/100,
+                                value = floor(max(lon, na.rm = T)*100)/100
+                   ))),
+            fluidRow(
+              column(width = 5,
+                     numericInput("latRegionMin",
+                                  label = "Latitude min",
+                                  min = ceiling(min(lat, na.rm = T)*100)/100,
+                                  max = floor(max(lat, na.rm = T)*100)/100,
+                                  value = ceiling(min(lat, na.rm = T)*100)/100)
+              ),
+              column(width = 5,
+                     numericInput("latRegionMax",
+                                  label = "Latitude max",
+                                  min = ceiling(min(lat, na.rm = T)*100)/100,
+                                  max = floor(max(lat, na.rm = T)*100)/100,
+                                  value = floor(max(lat, na.rm = T)*100)/100
+                     ))
+            
+          )
+        )
       })
     }
 
@@ -2782,7 +2817,14 @@ function(input, output, session) {
                            outfile = newOutfile,
                            nc34 = input$format,
                            overwrite = TRUE)
-    } else if (currentOperatorOption() == "constant") {
+    } else if (currentOperatorOption() == "threshold") {
+      argumentList <- list(var = input$usedVariable,
+                           thld = input$threshold,
+                           infile = nc_path_analyze(),
+                           outfile = newOutfile,
+                           nc34 = input$format,
+                           overwrite = TRUE)
+	} else if (currentOperatorOption() == "constant") {
       argumentList <- list(var = input$usedVariable,
                            const = input$constant,
                            infile = nc_path_analyze(),
@@ -2794,10 +2836,14 @@ function(input, output, session) {
       argumentList <- list(var = input$usedVariable,
                            infile = nc_path_analyze(),
                            outfile = newOutfile,
-                           lon1 = input$lonRegionSlider[1],
-                           lon2 = input$lonRegionSlider[2],
-                           lat1 = input$latRegionSlider[1],
-                           lat2 = input$latRegionSlider[2],
+                           # lon1 = input$lonRegionSlider[1],
+                           # lon2 = input$lonRegionSlider[2],
+                           # lat1 = input$latRegionSlider[1],
+                           # lat2 = input$latRegionSlider[2],
+                           lon1 = input$lonRegionMin,
+                           lon2 = input$lonRegionMax,
+                           lat1 = input$latRegionMin,
+                           lat2 = input$latRegionMax,
                            nc34 = input$format,
                            overwrite = TRUE)
     } else if (currentOperatorOption() == "point") {
@@ -3447,10 +3493,14 @@ function(input, output, session) {
         start_date = input$dateRange_analyze[1],
         end_date = input$dateRange_analyze[2],
         country_code = input$country,
-        lon_min = input$lonRegionSlider[1],
-        lon_max = input$lonRegionSlider[2],
-        lat_min = input$latRegionSlider[1],
-        lat_max = input$latRegionSlider[2],
+        # lon_min = input$lonRegionSlider[1],
+        # lon_max = input$lonRegionSlider[2],
+        # lat_min = input$latRegionSlider[1],
+        # lat_max = input$latRegionSlider[2],
+        lon1 = input$lonRegionMin,
+        lon2 = input$lonRegionMax,
+        lat1 = input$latRegionMin,
+        lat2 = input$latRegionMax,
         out_dir = monitor_climate_out_dir,
         temp_dir = monitor_climate_temp_dir,
         climate_dir = monitor_climate_temp_dir,
@@ -3565,8 +3615,10 @@ function(input, output, session) {
         } else if (currentOperatorOption() == "point") {
           newRow <- data.frame(operatorInput_value(), "point", paste0("lat: ", input$latPoint, ", lon: ", input$lonPoint))
         } else if (currentOperatorOption() == "region") {
-          newRow <- data.frame(operatorInput_value(), "region", paste0("lat: [", input$latRegionSlider[1], " ", input$latRegionSlider[2], "], ",
-                                                                     "lon: [", input$lonRegionSlider[1], " ", input$lonRegionSlider[2], "]"))
+          # newRow <- data.frame(operatorInput_value(), "region", paste0("lat: [", input$latRegionSlider[1], " ", input$latRegionSlider[2], "], ",
+          #                                                            "lon: [", input$lonRegionSlider[1], " ", input$lonRegionSlider[2], "]"))
+          newRow <- data.frame(operatorInput_value(), "region", paste0("lat: [", input$latRegionMin, " ", input$latRegionMax, "], ",
+                                                                       "lon: [", input$lonRegionMin, " ", input$lonRegionMax, "]"))
         } else if (currentOperatorOption() == "dateRange") {
           newRow <- data.frame(operatorInput_value(), "dateRange", paste0("from ", input$dateRange_analyze[1], " to ", input$dateRange_analyze[1]))
         } else {
@@ -3823,9 +3875,12 @@ function(input, output, session) {
     if (varname == 0)
       (varname <- var)
 
-    creator_att <- ncdf4::ncatt_get(id, 0, "publisher_name")
+    creator_att <- ncdf4::ncatt_get(id, 0, "institution")
     if (!creator_att$hasatt) {
-      creator_att <- ncdf4::ncatt_get(id, 0, "creator_name")  
+      creator_att <- ncdf4::ncatt_get(id, 0, "publisher_name")
+      if (!creator_att$hasatt) {
+        creator_att <- ncdf4::ncatt_get(id, 0, "creator_name")  
+      } 
     } 
     creator <- ifelse(creator_att$hasatt, creator_att$value, "-")
     copyrightText <- paste0("Data Source: ", creator)
@@ -4449,6 +4504,15 @@ function(input, output, session) {
                         value = c(tmp[1], tmp[2]))
           })
           
+          output$ihsf_visualize <- renderUI({
+            tmp <- 0.1
+            ihsf(tmp)
+            sliderInput("decimal",
+                        label = "Image Ratio",
+                        min = -0.9, max = 0.9,
+                        value = 0.1, ticks = FALSE)
+          })
+          
           output$title_text <- renderUI({
             textInput("text1",
                       label = "Title",
@@ -4945,6 +5009,7 @@ function(input, output, session) {
   observeEvent({
     lon_bounds()
     lat_bounds()
+    ihsf()
   }, {
 
     req(visualizeVariables()$plot_dim == 2)
@@ -4954,7 +5019,7 @@ function(input, output, session) {
       lon_bounds = lon_bounds(),
       lat_bounds = lat_bounds(),
       image_def = image_def,
-      ihsf = ihsf
+      ihsf = ihsf()
       )
 
     imagewidth(imDim$imagewidth)
@@ -5926,7 +5991,7 @@ function(input, output, session) {
                                                       plot_grid = plot_grid,
                                                       grid_col = grid_col,
                                                       image_def = image_def,
-                                                      ihsf = ihsf))
+                                                      ihsf = ihsf()))
       } else {
         if(checkboxCompareData_dropdown() == "cmsaf.side.by.side"){
           req((visualizeVariables()$plot_type == "cmsaf.side.by.side"))
@@ -6087,6 +6152,7 @@ function(input, output, session) {
     if (is.null(input$zoom_brush)) {
       lon_bounds(input$slider1)
       lat_bounds(input$slider2)
+      ihsf(input$decimal)
     } else {
       brush <- input$zoom_brush
       lon <- c(brush$xmin, brush$xmax)
@@ -6167,7 +6233,7 @@ function(input, output, session) {
                                                                   plot_grid = plot_grid,
                                                                   grid_col = grid_col,
                                                                   image_def = image_def,
-                                                                  ihsf = ihsf)
+                                                                  ihsf = ihsf())
                          in_plot <- res_plot$src
                        } else {
                          res_plot <- cmsafvis::render_plot(plot_rinstat = input$plot_rinstat,
@@ -6252,6 +6318,8 @@ function(input, output, session) {
       cat(paste0("Maximum:            ", da_max), "\n")
       cat(paste0("Minimum:            ", da_min), "\n")
       cat(paste0("Unit:               ", visualizeVariables()$unit), "\n")
+      cat("\n")
+      cat(paste0("To save the histogram figure: right-click + save image as..."), "\n")
     })
 
     # Missing values can be found in global.R
@@ -6302,13 +6370,13 @@ function(input, output, session) {
     cat("The CMSAF Visualizer is part of the CM SAF R Toolbox.", "\n")
     cat("This tool helps you to visualize 1D-timeseries and 2D-maps.", "\n")
     cat("\n")
-    cat("This version ('Beware of the Leopard') was tested with the cmsaf", "\n")
-    cat("R-package in version 3.1.0.", "\n")
+    cat("This version ('This must be Thursday') was tested with the cmsaf", "\n")
+    cat("R-package in version 3.2.0.", "\n")
     cat("\n")
     cat("Suggestions for improvements and praise for the developers", "\n")
     cat("can be send to contact.cmsaf@dwd.de.", "\n")
     cat("\n")
-    cat("                              - Steffen Kothe - 2021-02-10 -", "\n")
+    cat("                              - Steffen Kothe - 2021-08-26 -", "\n")
     cat("\n")
     cat("\n")
   })
