@@ -1,5 +1,5 @@
 Package: cmsaf
-Version: 3.3.0
+Version: 3.3.1
 Title: A Toolbox for CM SAF NetCDF Data
 Authors@R: 
     c(person(given = "Steffen",
@@ -16,7 +16,7 @@ Description: The Satellite Application Facility on Climate Monitoring (CM SAF)
     Meteorological Satellites (EUMETSAT) and one of EUMETSATs Satellite Application 
     Facilities. The CM SAF contributes to the sustainable monitoring of the climate 
     system by providing essential climate variables related to the energy and water 
-    cycle of the atmosphere (<http://www.cmsaf.eu>). It is a joint cooperation of eight 
+    cycle of the atmosphere (<https://www.cmsaf.eu>). It is a joint cooperation of eight 
     National Meteorological and Hydrological Services.
     The 'cmsaf' R-package includes a 'shiny' based interface for an easy application of 
     the 'cmsafops' and 'cmsafvis' packages - the CM SAF R Toolbox. The Toolbox offers an 
@@ -41,8 +41,8 @@ Suggests: spelling (>= 2.1), testthat (>= 2.3)
 RoxygenNote: 7.1.2
 Encoding: UTF-8
 Language: en-US
-Packaged: 2021-10-14 12:08:56 UTC; stkothe
+Packaged: 2021-12-02 12:41:10 UTC; stkothe
 Maintainer: Steffen Kothe <Steffen.Kothe@dwd.de>
 Author: Steffen Kothe [aut, cre],
   Danny Parsons [ctb]
-Date/Publication: 2021-10-14 13:10:10 UTC
+Date/Publication: 2021-12-02 13:10:11 UTC
