@@ -1,5 +1,12 @@
 # Release notes for cmsaf
 
+## 3.4.1
+
+- Minor adaptation to stripe plots
+- New color options for anomaly plots
+- Visualizer shows time bounds if included
+- Visualizer lon / lat sliders replaced by shinyWidgets::numericRangeInput
+
 ## 3.4.0
 
 - Added new color schemes 'Rocket', 'Mako', 'Hawaii', 'Batlow',  
