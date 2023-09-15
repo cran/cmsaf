@@ -6194,7 +6194,7 @@ function(input, output, session) {
     req(file.exists(shapeFile_path()))
 
     # data of all regions
-    region_data(suppressWarnings(maptools::readShapePoly(shapeFile_path())))
+    region_data(suppressWarnings(raster::shapefile(shapeFile_path())))
   })
 
   # Set divisions
@@ -6400,13 +6400,12 @@ function(input, output, session) {
         result_y <- append(result_y, rep(lat[j], length(lon)))
       }
       
-      coor_sat <- cbind(x=result_x, y=result_y)
-      A <- sp::SpatialPoints(coor_sat)
+      A <- cbind(x=result_x, y=result_y)
       
       for (istation in seq_along(data_station)) {
-        B <- sp::SpatialPoints(cbind(x=c(lon_station[istation]), y=c(lat_station[istation])))
-        tree <- SearchTrees::createTree(sp::coordinates(A))
-        inds <- SearchTrees::knnLookup(tree, newdat=sp::coordinates(B), k=1)
+        B <- cbind(x=c(lon_station[istation]), y=c(lat_station[istation]))
+        tree <- SearchTrees::createTree(A)
+        inds <- SearchTrees::knnLookup(tree, newdat=B, k=1)
         
         lon_coor <- coor_sat[inds,1]
         lat_coor <- coor_sat[inds,2]
@@ -6539,13 +6538,12 @@ function(input, output, session) {
         result_y <- append(result_y, rep(lat[j], length(lon)))
       }
       
-      coor_sat <- cbind(x=result_x, y=result_y)
-      A <- sp::SpatialPoints(coor_sat)
+      A <- cbind(x=result_x, y=result_y)
       
       for (istation in seq_along(data_station)) {
-        B <- sp::SpatialPoints(cbind(x=c(lon_station[istation]), y=c(lat_station[istation])))
-        tree <- SearchTrees::createTree(sp::coordinates(A))
-        inds <- SearchTrees::knnLookup(tree, newdat=sp::coordinates(B), k=1)
+        B <- cbind(x=c(lon_station[istation]), y=c(lat_station[istation]))
+        tree <- SearchTrees::createTree(A)
+        inds <- SearchTrees::knnLookup(tree, newdat=B, k=1)
         
         lon_coor <- coor_sat[inds,1]
         lat_coor <- coor_sat[inds,2]
@@ -7435,13 +7433,13 @@ function(input, output, session) {
     cat("The CMSAF Visualizer is part of the CM SAF R Toolbox.", "\n")
     cat("This tool helps you to visualize 1D-timeseries and 2D-maps.", "\n")
     cat("\n")
-    cat("This version ('Just Read The Instructions') was tested with the cmsaf", "\n")
-    cat("R-package in version 3.4.4.", "\n")
+    cat("This version ('Of Course I Still Love You') was tested with the cmsaf", "\n")
+    cat("R-package in version 3.5.0.", "\n")
     cat("\n")
     cat("Suggestions for improvements and praise for the developers", "\n")
     cat("can be send to contact.cmsaf@dwd.de.", "\n")
     cat("\n")
-    cat("                              - Steffen Kothe - 2022-08-15 -", "\n")
+    cat("                              - Steffen Kothe - 2023-09-14 -", "\n")
     cat("\n")
     cat("\n")
   })
