@@ -9,7 +9,7 @@
 descriptionString <-
   "
 
-The CM SAF R TOOLBOX 3.5.1 -- 'Of Course I Still Love You'
+The CM SAF R TOOLBOX 3.5.2 -- 'Of Course I Still Love You'
 
 The intention of the CM SAF R Toolbox is to help you using
 CM SAF NetCDF formatted climate data
@@ -25,7 +25,7 @@ right in and analyze or visualize a .nc file.
 Suggestions for improvements and praise for the developers
 can be sent to contact.cmsaf@dwd.de.
 
-- Steffen Kothe - 2024-05-07 -"
+- Steffen Kothe - 2024-09-27 -"
 
 # Variable can be found in global.R
 if (isRunningLocally) {

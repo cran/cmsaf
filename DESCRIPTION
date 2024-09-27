@@ -1,5 +1,5 @@
 Package: cmsaf
-Version: 3.5.1
+Version: 3.5.2
 Title: A Toolbox for CM SAF NetCDF Data
 Authors@R: 
     c(person(given = "Steffen",
@@ -38,11 +38,11 @@ Imports: colourpicker (>= 1.0), colorspace (>= 1.4), FNN (>= 1.1), maps
 NeedsCompilation: no
 Repository: CRAN
 Suggests: rworldxtra (>= 1.01), spelling (>= 2.1), testthat (>= 2.3)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Encoding: UTF-8
 Language: en-US
-Packaged: 2024-05-07 12:57:54 UTC; stkothe
+Packaged: 2024-09-27 09:02:53 UTC; stkothe
 Maintainer: Steffen Kothe <Steffen.Kothe@dwd.de>
 Author: Steffen Kothe [aut, cre],
   Danny Parsons [ctb]
-Date/Publication: 2024-05-07 13:10:02 UTC
+Date/Publication: 2024-09-27 15:10:13 UTC
