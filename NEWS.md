@@ -1,5 +1,9 @@
 # Release notes for cmsaf
 
+## 3.6.0
+- Added option to change font size in plots (works with cmsafvis >= 1.2.10)
+- Added message for file chooser, which might open behind Toolbox window
+
 ## 3.5.2
 - Minor fix of test 
 

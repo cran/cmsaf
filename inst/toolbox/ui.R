@@ -3,13 +3,13 @@
 # You should not use this R-script on its own!
 #
 # Have fun with the CM SAF R TOOLBOX!
-#                                              (Steffen Kothe / CM SAF 2024-05-07)
+#                                              (Steffen Kothe / CM SAF 2025-10-20)
 #__________________________________________________________________________________
 
 descriptionString <-
   "
 
-The CM SAF R TOOLBOX 3.5.2 -- 'Of Course I Still Love You'
+The CM SAF R TOOLBOX 3.6.0 -- 'Funny, It Worked Last Time...'
 
 The intention of the CM SAF R Toolbox is to help you using
 CM SAF NetCDF formatted climate data
@@ -25,7 +25,7 @@ right in and analyze or visualize a .nc file.
 Suggestions for improvements and praise for the developers
 can be sent to contact.cmsaf@dwd.de.
 
-- Steffen Kothe - 2024-09-27 -"
+- Steffen Kothe - 2025-10-20 -"
 
 # Variable can be found in global.R
 if (isRunningLocally) {
@@ -37,7 +37,9 @@ if (isRunningLocally) {
   <p>(usually the output of step one (Prepare)).</p>
   <br>
   <p>This application will help you to analyze and manipulate your data.</p>
-  <p>The output is usually written in a NetCDF file in the according output folder.</p>"
+  <p>The output is usually written in a NetCDF file in the according output folder.</p>
+  <br>
+  <p><strong>Notice: The file selection dialog may open in the background!</strong></p>"
 } else {
   analyzeString <-
     "<h2>Analyze</h2>
@@ -47,7 +49,9 @@ if (isRunningLocally) {
   <p>(usually the output of step one (Prepare)).</p>
   <br>
   <p>This application will help you to analyze and manipulate your data.</p>
-  <p>Again, make sure to download your session files before closing the application.</p>"
+  <p>Again, make sure to download your session files before closing the application.</p>
+  <br>
+  <p><strong>Notice: The file selection dialog may open in the background!</strong></p>"
 }
 
 visualizeString <-
@@ -55,7 +59,9 @@ visualizeString <-
 <p>Please select a NetCDF file <strong>(.nc)</strong> to start the visualization.</p>
 <br>
 <p>This application can be used to display NetCDF data.</p>
-<p>In addition, it provides information on the data and the NetCDF file.</p>"
+<p>In addition, it provides information on the data and the NetCDF file.</p>
+<br>
+<p><strong>Notice: The file selection dialog may open in the background!</strong></p>"
 
 # render string for colorspace
 renderString <-
@@ -658,7 +664,31 @@ fluidPage(
                             uiOutput("subtitle_text"),
                             shinyjs::hidden(uiOutput("title_text2")),
                             shinyjs::hidden(uiOutput("subtitle_text2")),
-                            uiOutput("scale_caption")),
+                            uiOutput("scale_caption"),
+                            
+                            sliderInput(
+                              "font_size_2d",
+                              label = "Font Size",
+                              min = 5,
+                              max = 25,
+                              value = 12,  # default
+                              step = 1
+                            ),
+                            # For trend plots show only values which are significant
+                            tags$div(id = "sig_ui",
+                                     shinyjs::hidden(
+                                       tags$div(id = "sig_options",
+                                                checkboxGroupInput("sig_values_to_plot", "Significance levels to hide",
+                                                                   choices = list("Positive (1)" = 1, "Not significant (0)" = 0, "Negative (-1)" = -1),
+                                                                   selected = NULL),
+                                                selectInput("sig_na_color", "Color for masked areas",
+                                                            choices = list("White" = "white", "Light grey" = "lightgrey", "Grey" = "grey", "Dark Grey I" = "grey62",
+                                                                           "Dark Grey II" = "grey42", "Pink" = "pink", "Slate grey" = "slategray2"),
+                                                            selected = "lightgrey")
+                                       )
+                                     )
+                            )
+                            ),
                    # FOR NOW NOT ALLOWING CHANGES TO WIDTH AND HEIGHT IN APP. (DO IT IN GLOBAL.R)
                    # uiOutput("width_height"),
 
@@ -698,7 +728,17 @@ fluidPage(
                               uiOutput("title_text_1d"),
                               uiOutput("subtitle_text_1d"),
                               uiOutput("x_axis_text_1d"),
-                              uiOutput("y_axis_text_1d"))),
+                              uiOutput("y_axis_text_1d"),
+                              
+                              sliderInput(
+                                "font_size_1d",
+                                label = "Font Size",
+                                min = 5,
+                                max = 25,
+                                value = 12,  # default
+                                step = 1
+                              )
+                              )),
 
                    # FOR NOW NOT ALLOWING CHANGES TO WIDTH AND HEIGHT IN APP. (DO IT IN GLOBAL.R)
                    # uiOutput("width_height"),

@@ -1,5 +1,5 @@
 Package: cmsaf
-Version: 3.5.2
+Version: 3.6.0
 Title: A Toolbox for CM SAF NetCDF Data
 Authors@R: 
     c(person(given = "Steffen",
@@ -30,19 +30,17 @@ URL: https://www.cmsaf.eu
 License: GPL (>= 3)
 BugReports: https://github.com/cmsaf/cmsaf-r-tools/issues
 Depends: R (>= 4.0), cmsafops (>= 1.4.0), cmsafvis (>= 1.2.0)
-Imports: colourpicker (>= 1.0), colorspace (>= 1.4), FNN (>= 1.1), maps
-        (>= 3.3), ncdf4 (>= 1.17), R.utils (>= 2.9), raster (>= 3.0),
-        shiny (>= 1.4), shinyFiles (>= 0.8.0), shinyjs (>= 1.1),
-        shinythemes (>= 1.1), shinyWidgets (>= 0.6), tcltk (>= 3.5),
-        data.table, SearchTrees, xml2
+Suggests: shiny, shinyjs, shinyWidgets, shinyFiles, shinythemes,
+        colourpicker, colorspace, data.table, maps, ncdf4, raster,
+        rworldxtra, FNN, R.utils, SearchTrees, spelling, tcltk,
+        testthat, xml2
 NeedsCompilation: no
 Repository: CRAN
-Suggests: rworldxtra (>= 1.01), spelling (>= 2.1), testthat (>= 2.3)
 RoxygenNote: 7.3.2
 Encoding: UTF-8
 Language: en-US
-Packaged: 2024-09-27 09:02:53 UTC; stkothe
+Packaged: 2025-10-20 08:53:33 UTC; stkothe
 Maintainer: Steffen Kothe <Steffen.Kothe@dwd.de>
 Author: Steffen Kothe [aut, cre],
   Danny Parsons [ctb]
-Date/Publication: 2024-09-27 15:10:13 UTC
+Date/Publication: 2025-10-20 11:40:02 UTC

@@ -3,7 +3,7 @@
 # You should not use this R-script on its own!
 #
 # Have fun with the CM SAF R TOOLBOX!
-#                                              (Steffen Kothe / CM SAF 2024-09-27)
+#                                              (Steffen Kothe / CM SAF 2025-10-20)
 #__________________________________________________________________________________
 
 # Function to compute first of month
@@ -259,7 +259,16 @@ function(input, output, session) {
   # TODO: Setting the maximum request size. WARNING: NOT SURE WHAT'S A GOOD VALUE FOR THIS
   # FOR NOW SETTING TO 2.5 GB, as this exceeds the largest test data.
   options(shiny.maxRequestSize = 2500 * 1024^2)
-
+  
+  # Show notification once when file chooser is triggered
+  observeEvent(input$select_input_file, {
+    showNotification(
+      "The file selection window may open in the background. If you don't see it, check behind the Toolbox window.",
+      type = "message",
+      duration = 5
+    )
+  }, once = TRUE)
+  
   # Check if is running locally or on remote server
   # Variable can be found in global.R
   if (isRunningLocally) {
@@ -713,7 +722,8 @@ function(input, output, session) {
                  tags$p("Finally, a NetCDF file will be created for you. You can find it in the output directory"),
                  tags$p("located at ", tags$strong(dirname(userDir))),
                  br(),
-                 tags$p("The app guides through all steps."))
+                 tags$p("The app guides through all steps."),
+                 tags$p(tags$strong("Notice: The file selection dialog may open in the background!")))
       } else {
         tags$div(h2("Prepare"),
                  tags$p("Please select a TAR file", tags$strong("(.tar)"), "or a NetCDF file", tags$strong("(.nc)"), " to start the preparation."),
@@ -730,7 +740,8 @@ function(input, output, session) {
                  tags$p("Finally, a NetCDF file will be created for you."),
                  tags$p(tags$strong("Make sure to download your session files before closing this application.")),
                  br(),
-                 tags$p("The app guides through all steps."))
+                 tags$p("The app guides through all steps."),
+                 tags$p(tags$strong("Notice: The file selection dialog may open in the background!")))
       }
     })
   })
@@ -1309,24 +1320,52 @@ function(input, output, session) {
     shinyjs::enable("ncFileLocal_visualize")
     shinyjs::enable("useOutputFile_visualize")
   }, ignoreInit = TRUE)
-
+  
+  observeEvent(nc_path_visualize(), {
+    req(nc_path_visualize() != "")
+    req(file.exists(nc_path_visualize()))
+    
+    nc <- ncdf4::nc_open(nc_path_visualize())
+    sig_vars <- names(nc$var)
+    ncdf4::nc_close(nc)
+    
+    if ("sig" %in% sig_vars) {
+      shinyjs::show("sig_options")
+    } else {
+      shinyjs::hide("sig_options")
+    }
+  })
+  
   # Observing changes in selected nc file visualize. (remote)
   shinyFiles::shinyFileChoose(input, 'ncFileRemote_visualize', session = session, roots = volumes_output, filetypes=c('nc'))
 
   observeEvent(input$ncFileRemote_visualize, {
-    pth <- shinyFiles::parseFilePaths(volumes_output,input$ncFileRemote_visualize)
+    shinyjs::alert("observeEvent triggered!")
+    pth <- shinyFiles::parseFilePaths(volumes_output, input$ncFileRemote_visualize)
     req(nrow(pth) > 0)
     req(file.exists(pth$datapath))
     isolate(nc_object_visualize(NULL))
+    
     if (!endsWith(pth$datapath, ".nc")) {
       isolate(nc_path_visualize(""))
       wrong_file_modal(".nc")
     } else {
-      nc_path_visualize( pth$datapath )
+      nc_path_visualize(pth$datapath)
       actionVisualize(actionVisualize() + 1)
+      
+      # === Check for 'sig' variable ===
+      nc <- ncdf4::nc_open(pth$datapath)
+      sig_vars <- names(nc$var)
+      cat("Variables in file:", paste(sig_vars, collapse = ", "), "\n")
+      if ("sig" %in% sig_vars) {
+        shinyjs::show("sig_options")
+      } else {
+        shinyjs::hide("sig_options")
+      }
+      ncdf4::nc_close(nc)
     }
   })
-
+  
   # If user chooses to take generated nc file update nc_path_visualize. (output file)
   observeEvent(input$useOutputFile_visualize, {
     nc_path_visualize(outputFilepath())
@@ -1662,7 +1701,10 @@ function(input, output, session) {
       # choose variable 
       userOptions <- getUserOptions(nc_path(), claas_flag = 0)
       output$variable_ui_nc <- renderUI({
-        vars <- subset(userOptions$variables, !(userOptions$variables %in% c("lat", "lon", "latitude", "longitude","time_bnds", "nb2", "time", "crs")))
+        vars <- subset(userOptions$variables, !(userOptions$variables %in% c("lat", "lon", "latitude", "longitude",
+                                                                             "time_bnds", "nb2", "time", "crs",
+                                                                             "record_status", "lat_bnds", "lon_bnds",
+                                                                             "latlon_grid")))
         selectInput("variableInput360",
                     "Please choose a variable.",
                     choices = vars)
@@ -2136,7 +2178,11 @@ function(input, output, session) {
           "SATID",
           "latitude",
           "longitude",
-          "crs"
+          "crs",
+          "record_status",
+          "lat_bnds",
+          "lon_bnds",
+          "latlon_grid"
         )
       ))
 
@@ -2377,7 +2423,10 @@ function(input, output, session) {
     # Distinction between .tar-mode and .nc-mode
     if(nc_path() != "") {
       output$variable_ui <- renderUI({
-        vars <- subset(userOptions$variables, !(userOptions$variables %in% c("lat", "lon", "latitude", "longitude", "time_bnds", "nb2", "time", "crs")))
+        vars <- subset(userOptions$variables, !(userOptions$variables %in% c("lat", "lon", "latitude", "longitude", 
+                                                                             "time_bnds", "nb2", "time", "crs",
+                                                                             "record_status", "lat_bnds", "lon_bnds",
+                                                                             "latlon_grid")))
         selectInput("variableInput",
                     "You have selected the following variable",
                     choices = vars)
@@ -2385,7 +2434,10 @@ function(input, output, session) {
     }
     else{
       output$variable_ui <- renderUI({
-        vars <- subset(userOptions$variables, !(userOptions$variables %in% c("lat", "lon", "latitude", "longitude", "time_bnds", "nb2", "time", "crs")))
+        vars <- subset(userOptions$variables, !(userOptions$variables %in% c("lat", "lon", "latitude", "longitude", 
+                                                                             "time_bnds", "nb2", "time", "crs",
+                                                                             "record_status", "lat_bnds", "lon_bnds",
+                                                                             "latlon_grid")))
         selectInput("variableInput",
                     "We found the following variables",
                     choices = vars)
@@ -2931,7 +2983,10 @@ function(input, output, session) {
         resetToPreparePanel()
       } else {
 
-      var_default <- subset(vn, !(vn %in% c("lat", "lon", "latitude", "longitude", "time_bnds", "nb2", "time", "crs")))
+      var_default <- subset(vn, !(vn %in% c("lat", "lon", "latitude", "longitude", 
+                                            "time_bnds", "nb2", "time", "crs",
+                                            "record_status", "lat_bnds", "lon_bnds",
+                                            "latlon_grid")))
 
       # Stop if data are in sinusoidal projection
       if ("sinusoidal" %in% vn) {
@@ -5312,7 +5367,10 @@ function(input, output, session) {
       resetToPreparePanel()
     } else {
 
-    vn <- subset(vn, !(vn %in% c("lat", "lon", "latitude", "longitude", "time_bnds", "nb2", "time", "crs")))
+    vn <- subset(vn, !(vn %in% c("lat", "lon", "latitude", "longitude", 
+                                 "time_bnds", "nb2", "time", "crs",
+                                 "record_status", "lat_bnds", "lon_bnds",
+                                 "latlon_grid")))
 
     # If more than one we allow user to choose a variable. Catch this input here.
     if (!is.null(variable_visualize_modal())) {
@@ -5538,7 +5596,7 @@ function(input, output, session) {
             sliderInput("decimal",
                         label = "Image Ratio",
                         min = -0.9, max = 0.9,
-                        value = 0.1, ticks = FALSE)
+                        value = 0, ticks = FALSE)
           })
           
           output$title_text <- renderUI({
@@ -6229,45 +6287,87 @@ function(input, output, session) {
 
   # Set divisions
   observeEvent(region_data(), {
-    all_divisions <- names(region_data())
+    dat <- region_data()
+    cols <- names(dat)
+    
+    keep <- vapply(cols, function(nm) {
+      v <- dat[[nm]]
+      is.atomic(v) && (length(na.omit(v)) > 0)
+    }, logical(1))
+    
+    all_divisions <- cols[keep]
+    
     if (!is.element("COUNTRY", all_divisions)) {
       all_divisions <- c("COUNTRY", all_divisions)
     }
+    
     output$division_options <- renderUI({
-      selectInput("division",
-                  "Division",
-                  choices = c("Select division", all_divisions))
+      selectInput("division", "Division", choices = c("Select division", all_divisions))
     })
   })
-
+  
   # Set regions
+  # Helper: robustly extract region values for a chosen division column
+  .regions_from_division <- function(dat, division) {
+    if (is.null(dat) || is.null(division) || !nzchar(division)) return(character())
+    v <- dat[[division]]
+    if (is.null(v)) return(character())
+    
+    # Convert to character and build unique values; factors keep their levels
+    if (is.factor(v)) {
+      vals <- levels(v)
+    } else {
+      vals <- unique(as.character(v))
+    }
+    
+    # Drop NAs and empty strings
+    vals <- vals[!is.na(vals) & nzchar(vals)]
+    
+    # Stable, case-insensitive sort
+    vals[order(tolower(vals), vals)]
+  }
+  
+  # Set regions (replace your original "Set regions" observer with this block)
   observeEvent(input$division, {
     if (input$division != "Select division") {
       if (input$division != "COUNTRY") {
-        all_regions <- levels(region_data()[[input$division]])
+        all_regions <- .regions_from_division(region_data(), input$division)
+        
+        # Friendly fallback if no values are found in the chosen attribute
+        if (!length(all_regions)) {
+          all_regions <- c("(no values found in selected attribute)")
+        }
+        
+        output$region_options <- renderUI({
+          selectInput(
+            "region",
+            "Region",
+            choices = c("Select region", all_regions),
+            selected = "Select region"
+          )
+        })
+        
       } else {
-        # data of all countries
+        # COUNTRY mode: offer countries by ISO3 with English names as labels
         countries_choosable <- codes[, "iso3c"]
         names(countries_choosable) <- codes[, "country.name.en"]
-
-        all_regions <- countries_choosable
+        
+        output$region_options <- renderUI({
+          selectInput(
+            "region",
+            "Region",
+            choices = c("Select region", countries_choosable),
+            selected = "Select region"
+          )
+        })
       }
-
-      output$region_options <- renderUI({
-        selectInput("region",
-                    "Region",
-                    choices = c("Select region", all_regions),
-                    selected = "Select region")
-      })
     } else {
       output$region_options <- renderUI({
-        selectInput("region",
-                    "Region",
-                    choices = c("Select region"))
+        selectInput("region", "Region", choices = c("Select region"))
       })
     }
   })
-
+  
   # Toggle instat file upload
   observeEvent(input$plot_rinstat, {
     # Is set in global.R
@@ -6774,9 +6874,15 @@ function(input, output, session) {
   
   db_text1_2 <- shiny::debounce(reactive({input$text1_2}), 750)
   db_text2_2 <- shiny::debounce(reactive({input$text2_2}), 750)
-
+  
+  db_sig_values_to_plot <- shiny::debounce(reactive({input$sig_values_to_plot}), 750)
+  db_sig_na_color       <- shiny::debounce(reactive({input$sig_na_color}), 750)
+  
   getPlot_1d <- reactive({
     req(readyToPlot())
+    
+    input$font_size_1d
+    
     if(nc_path_visualize_2() != ""){
       c(db_text1_1d())
       c(db_text2_1d())
@@ -6820,7 +6926,7 @@ function(input, output, session) {
                                                         imageheight = imageheight(),
                                                         text1_1d = input$text1_1d,   # title
                                                         text2_1d = input$text2_1d,   # subtitle
-                                                        textsize = textsize,
+                                                        textsize = input$font_size_1d / 10,
                                                         linesize = linesize,
                                                         x_axis_label_1d = input$x_axis_label_1d,
                                                         y_axis_label_1d = input$y_axis_label_1d,
@@ -6838,7 +6944,7 @@ function(input, output, session) {
                                                         imageheight = imageheight(),
                                                         text1_1d = input$text1_1d,   # title
                                                         text2_1d = input$text2_1d,   # subtitle
-                                                        textsize = textsize,
+                                                        textsize = input$font_size_1d / 10,
                                                         legend_label1 = input$x_axis_label_1d,
                                                         legend_label2 = input$y_axis_label_1d,
                                                         timestep_1d_visualize = input$timestep_1d_visualize
@@ -6862,7 +6968,7 @@ function(input, output, session) {
                                                              imageheight = imageheight(),
                                                              text1_1d = input$text1_1d,   # title
                                                              text2_1d = input$text2_1d,   # subtitle
-                                                             textsize = textsize,
+                                                             textsize = input$font_size_1d / 10,
                                                              linesize = linesize,
                                                              col = input$integer,   # color
                                                              legend_label1 = input$x_axis_label_1d,
@@ -6876,7 +6982,7 @@ function(input, output, session) {
                                                                     visualizeVariables = visualizeVariables(),
                                                                     imagewidth = imagewidth(),
                                                                     imageheight = imageheight(),
-                                                                    textsize = textsize,
+                                                                    textsize = input$font_size_1d,
                                                                     linesize = linesize,
                                                                     title_data1 = input$x_axis_label_1d,
                                                                     title_data2 = input$y_axis_label_1d))
@@ -6905,7 +7011,7 @@ function(input, output, session) {
                                                  text2_1d = input$text2_1d,   # subtitle
                                                  text3_1d = input$x_axis_label_1d, # X-Label
                                                  text4_1d = input$y_axis_label_1d, # Y-Label
-                                                 textsize = textsize,
+                                                 textsize = input$font_size_2d / 10,
                                                  linesize = linesize,
                                                  col = input$integer))   # color
       })
@@ -6925,7 +7031,7 @@ function(input, output, session) {
                                                  imageheight = imageheight(),
                                                  text1_1d = input$text1_1d,   # title
                                                  text2_1d = input$text2_1d,   # subtitle
-                                                 textsize = textsize,
+                                                 textsize = input$font_size_1d / 10,
                                                  linesize = linesize,
                                                  col = input$integer,   # color
                                                  timestep_1d_visualize = input$timestep_1d_visualize))
@@ -6981,11 +7087,17 @@ function(input, output, session) {
       input$bordercolor2,     # border color for outlines
       input$PAL,             # colorspace pallete
       db_text1_2(),
-      db_text2_2()
+      db_text2_2(),
+      input$font_size_2d,       # font size for 2d plots
+      db_sig_values_to_plot(),  # significance values of trend to plot
+      db_sig_na_color()         # color for non-significant values
     )
     
     # Everything below this point is non-reactive.
     isolate({
+      # Scale font size proportionally
+      textsize_scaled <- input$font_size_2d / 10
+      colorbar_cex <- textsize_scaled
       # First check validity in region plot
       if (input$plot_region) {
         if (is.null(region_data()) && (is.null(shapeFile_path()) || !file.exists(shapeFile_path()))) {
@@ -7001,7 +7113,6 @@ function(input, output, session) {
             title = "Wrong file format.",
             size = "l"
           ))
-
           req(FALSE)
         }
         req(input$region != "Select region")
@@ -7077,7 +7188,7 @@ function(input, output, session) {
                                                       palettes = palettes,
                                                       num_brk = input$num_brk,
                                                       reverse = input$reverse,
-                                                      textsize = textsize,
+                                                      textsize = input$font_size_2d / 10,
                                                       bordercolor = input$bordercolor2,
                                                       plot_grid = plot_grid,
                                                       grid_col = grid_col,
@@ -7118,7 +7229,7 @@ function(input, output, session) {
                                                                text2 = input$text2,
                                                                text3 = input$text3,
                                                                int = input$int,
-                                                               textsize = textsize,
+                                                               textsize = input$font_size_2d / 10,
                                                                bordercolor = input$bordercolor2,
                                                                linesize = linesize,
                                                                na.color = na.color,
@@ -7161,7 +7272,7 @@ function(input, output, session) {
                                                  text2 = input$text2,
                                                  text3 = input$text3,
                                                  int = input$int,
-                                                 textsize = textsize,
+                                                 textsize = input$font_size_2d / 10,
                                                  bordercolor = input$bordercolor2,
                                                  linesize = linesize,
                                                  na.color = na.color,
@@ -7169,7 +7280,9 @@ function(input, output, session) {
                                                  palettes = palettes,
                                                  reverse = input$reverse,
                                                  plot_grid = plot_grid,
-                                                 grid_col = grid_col))
+                                                 grid_col = grid_col,
+                                                 sig_values_to_plot = input$sig_values_to_plot,
+                                                 sig_na_color = input$sig_na_color))
         }
       }
     })
@@ -7320,7 +7433,7 @@ function(input, output, session) {
                                                                   palettes = palettes,
                                                                   num_brk = input$num_brk,
                                                                   reverse = input$reverse,
-                                                                  textsize = textsize,
+                                                                  textsize = input$font_size_2d / 10,
                                                                   bordercolor = input$bordercolor2,
                                                                   plot_grid = plot_grid,
                                                                   grid_col = grid_col,
@@ -7359,7 +7472,7 @@ function(input, output, session) {
                                                            text2 = input$text2,
                                                            text3 = input$text3,
                                                            int = input$int,
-                                                           textsize = textsize,
+                                                           textsize = input$font_size_2d / 10,
                                                            bordercolor = input$bordercolor2,
                                                            linesize = linesize,
                                                            na.color = na.color,
@@ -7367,7 +7480,9 @@ function(input, output, session) {
                                                            palettes = palettes,
                                                            reverse = input$reverse,
                                                            plot_grid = plot_grid,
-                                                           grid_col = grid_col)
+                                                           grid_col = grid_col,
+                                                           sig_values_to_plot = input$sig_values_to_plot,
+                                                           sig_na_color = input$sig_na_color)
                          in_plot <- res_plot$src
                        }
                        file.copy(in_plot,file)
@@ -7387,44 +7502,82 @@ function(input, output, session) {
     req(visualizeDataMax())
     req(visualizeVariables()$plot_dim == 2)
 
-    # compute some statistics
-    xr <- which(visualizeVariables()$lon >= (input$slider1[1]) & visualizeVariables()$lon <= (input$slider1[2]))
-    yr <- which(visualizeVariables()$lat >= (input$slider2[1]) & visualizeVariables()$lat <= (input$slider2[2]))
-    dastat <- visualizeDataTimestep()[xr, yr]
-    # dastat <- visualizeVariables()$data[xr, yr, which(visualizeVariables()$date.time == input$timestep, arr.ind = TRUE)]
-
-    dg <- 2
-    if (abs(visualizeDataMax()) >= 10) (dg <- 1)
-    if (abs(visualizeDataMax()) >= 100) (dg <- 0)
-
-    da_mean   <- round(mean(dastat, na.rm = TRUE), digits = dg)
-    da_median <- round(stats::median(dastat, na.rm = TRUE), digits = dg)
-    da_sd     <- round(stats::sd(dastat, na.rm = TRUE), digits = dg)
-    da_max    <- round(max(dastat, na.rm = TRUE), digits = dg)
-    da_min    <- round(min(dastat, na.rm = TRUE), digits = dg)
-
-    # some numbers
-    output$statistics <- renderPrint({
-      cat(paste0("Mean:               ", da_mean), "\n")
-      cat(paste0("Median:             ", da_median), "\n")
-      cat(paste0("Standard deviation: ", da_sd), "\n")
-      cat(paste0("Maximum:            ", da_max), "\n")
-      cat(paste0("Minimum:            ", da_min), "\n")
-      cat(paste0("Unit:               ", visualizeVariables()$unit), "\n")
-      cat("\n")
-      cat(paste0("To save the histogram figure: right-click + save image as..."), "\n")
-    })
-
-    # Missing values can be found in global.R
-    # histogram
-    output$myHist <- renderPlot({
-      cmsafvis::render_hist_plot(dastat = as.numeric(dastat),
-                                 shortDescription = input$text1,
-                                 xlab = input$text3,
-                                 grid_col = grid_col,
-                                 bordercolor = bordercolor,
-                                 linesize = linesize)
-    })
+    # compute some statistics (robust to all-NA / empty selections)
+    xr <- which(visualizeVariables()$lon >= input$slider1[1] &
+                  visualizeVariables()$lon <= input$slider1[2])
+    yr <- which(visualizeVariables()$lat >= input$slider2[1] &
+                  visualizeVariables()$lat <= input$slider2[2])
+    
+    # coerce to numeric and keep only finite values
+    dastat_raw <- as.numeric(visualizeDataTimestep()[xr, yr])
+    x <- dastat_raw[is.finite(dastat_raw)]
+    
+    # digits based on data max; guard against NA
+    vm <- suppressWarnings(visualizeDataMax())
+    dg <- 2L
+    if (is.finite(vm) && abs(vm) >= 10)  dg <- 1L
+    if (is.finite(vm) && abs(vm) >= 100) dg <- 0L
+    
+    if (!length(x)) {
+      # no finite data in selection
+      da_mean   <- NA_real_
+      da_median <- NA_real_
+      da_sd     <- NA_real_
+      da_max    <- NA_real_
+      da_min    <- NA_real_
+      
+      output$statistics <- renderPrint({
+        cat("No finite data in the selected area.\n\n")
+        cat(paste0("Mean:               ", da_mean), "\n")
+        cat(paste0("Median:             ", da_median), "\n")
+        cat(paste0("Standard deviation: ", da_sd), "\n")
+        cat(paste0("Maximum:            ", da_max), "\n")
+        cat(paste0("Minimum:            ", da_min), "\n")
+        cat(paste0("Unit:               ", visualizeVariables()$unit), "\n\n")
+        cat("To save the histogram figure: right-click + save image as...\n")
+      })
+      
+      output$myHist <- renderPlot({
+        # let the plotting function show a minimal "no data" plot
+        cmsafvis::render_hist_plot(
+          dastat = numeric(0),
+          shortDescription = input$text1,
+          xlab = input$text3,
+          grid_col = grid_col,
+          bordercolor = bordercolor,
+          linesize = linesize
+        )
+      })
+      
+    } else {
+      # compute stats on finite data
+      da_mean   <- round(mean(x),            digits = dg)
+      da_median <- round(stats::median(x),   digits = dg)
+      da_sd     <- round(stats::sd(x),       digits = dg)
+      da_max    <- round(max(x),             digits = dg)
+      da_min    <- round(min(x),             digits = dg)
+      
+      output$statistics <- renderPrint({
+        cat(paste0("Mean:               ", da_mean), "\n")
+        cat(paste0("Median:             ", da_median), "\n")
+        cat(paste0("Standard deviation: ", da_sd), "\n")
+        cat(paste0("Maximum:            ", da_max), "\n")
+        cat(paste0("Minimum:            ", da_min), "\n")
+        cat(paste0("Unit:               ", visualizeVariables()$unit), "\n\n")
+        cat("To save the histogram figure: right-click + save image as...\n")
+      })
+      
+      output$myHist <- renderPlot({
+        cmsafvis::render_hist_plot(
+          dastat = x,
+          shortDescription = input$text1,
+          xlab = input$text3,
+          grid_col = grid_col,
+          bordercolor = bordercolor,
+          linesize = linesize
+        )
+      })
+    }
   })
 
   # Observing changes to instat file
@@ -7463,13 +7616,13 @@ function(input, output, session) {
     cat("The CMSAF Visualizer is part of the CM SAF R Toolbox.", "\n")
     cat("This tool helps you to visualize 1D-timeseries and 2D-maps.", "\n")
     cat("\n")
-    cat("This version ('Of Course I Still Love You') was tested with the cmsaf", "\n")
-    cat("R-package in version 3.5.2.", "\n")
+    cat("This version ('Funny, It Worked Last Time...') was tested with the cmsaf", "\n")
+    cat("R-package in version 3.6.0.", "\n")
     cat("\n")
     cat("Suggestions for improvements and praise for the developers", "\n")
     cat("can be send to contact.cmsaf@dwd.de.", "\n")
     cat("\n")
-    cat("                              - Steffen Kothe - 2024-09-27 -", "\n")
+    cat("                              - Steffen Kothe - 2025-10-20 -", "\n")
     cat("\n")
     cat("\n")
   })
